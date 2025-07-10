@@ -54,7 +54,10 @@ cd flutter-app/
 ```bash
 flutter doctor
 ```
-Fix any issues shown before proceeding.
+
+**Note**: If you see Xcode warnings like "Unable to get list of installed Simulator runtimes", you can ignore them if you're only building for Android. The app will build fine for Android without iOS/Xcode setup.
+
+Fix any Android-related issues before proceeding.
 
 ### 3. Install Dependencies
 ```bash
@@ -180,6 +183,11 @@ flutter build apk --release
 **✗ Connected device:**
 - Enable USB Debugging on device
 - Try different USB cable/port
+
+**⚠️ Xcode warnings (iOS-related):**
+- Safe to ignore if only building for Android
+- Only needed for iOS development
+- Android builds work independently of Xcode setup
 
 ### Build Issues
 

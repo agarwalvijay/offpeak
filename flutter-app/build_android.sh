@@ -19,8 +19,9 @@ echo "🧹 Cleaning previous builds..."
 flutter clean
 flutter pub get
 
-# Check for issues
+# Check for issues (Android-specific)
 echo "🔍 Running Flutter doctor..."
+echo "Note: Xcode/iOS warnings can be ignored for Android-only builds"
 flutter doctor
 
 # Build debug APK (for testing)
