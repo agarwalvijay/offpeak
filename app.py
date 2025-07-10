@@ -207,44 +207,91 @@ else:
 with col1:
     st.header("Current Pricing")
     
+    # Add explanation of pricing types
+    st.info("💡 **Current Hour Average** = average price for this hour | **Latest 5-Minute** = most recent real-time price")
+    
+    # Create two columns for current pricing metrics
+    pricing_col1, pricing_col2 = st.columns(2)
+    
     # Get current hour average
     try:
         current_data = api.get_current_hour_average()
+        hour_avg_price = None
+        hour_avg_time = None
+        
         if current_data:
-            latest_price = float(current_data[0]['price'])
-            latest_time = processor.convert_millis_to_datetime(int(current_data[0]['millisUTC']))
+            hour_avg_price = float(current_data[0]['price'])
+            hour_avg_time = processor.convert_millis_to_datetime(int(current_data[0]['millisUTC']))
             
-            # Price status indicator
-            if latest_price <= st.session_state.alert_settings['low_threshold']:
-                status_class = "status-good"
-                status_text = "Good time to use electricity"
-                price_level = "LOW"
-            elif latest_price <= st.session_state.alert_settings['medium_threshold']:
-                status_class = "status-warning"
-                status_text = "Moderate pricing"
-                price_level = "MEDIUM"
-            else:
-                status_class = "status-danger"
-                status_text = "High pricing - consider reducing usage"
-                price_level = "HIGH"
-            
-            st.metric(
-                label="Current Hour Average Price",
-                value=f"{latest_price:.2f}¢/kWh",
-                delta=f"as of {latest_time.strftime('%I:%M %p CT')}"
-            )
-            
-            st.markdown(f'<p class="{status_class}"><strong>{status_text}</strong></p>', unsafe_allow_html=True)
-            
-            # Check for alerts
-            if st.session_state.alert_settings['alerts_enabled']:
-                alert_message = alerts.check_price_alert(latest_price, st.session_state.alert_settings)
-                if alert_message:
-                    st.warning(alert_message)
+            with pricing_col1:
+                st.metric(
+                    label="Current Hour Average",
+                    value=f"{hour_avg_price:.2f}¢/kWh",
+                    delta=f"as of {hour_avg_time.strftime('%I:%M %p CT')}"
+                )
         else:
-            st.error("Unable to fetch current pricing data. ComEd API may be experiencing issues.")
+            with pricing_col1:
+                st.error("Hour average unavailable")
     except Exception as e:
-        st.error(f"Error fetching current pricing: {str(e)}")
+        with pricing_col1:
+            st.error(f"Error: {str(e)}")
+    
+    # Get latest 5-minute price
+    try:
+        five_min_data = api.get_five_minute_feed()
+        latest_5min_price = None
+        latest_5min_time = None
+        
+        if five_min_data:
+            latest = five_min_data[-1]
+            latest_5min_price = float(latest['price'])
+            latest_5min_time = processor.convert_millis_to_datetime(int(latest['millisUTC']))
+            
+            with pricing_col2:
+                st.metric(
+                    label="Latest 5-Minute Price",
+                    value=f"{latest_5min_price:.2f}¢/kWh",
+                    delta=f"as of {latest_5min_time.strftime('%I:%M %p CT')}"
+                )
+        else:
+            with pricing_col2:
+                st.error("5-min price unavailable")
+    except Exception as e:
+        with pricing_col2:
+            st.error(f"Error: {str(e)}")
+    
+    # Use the most recent available price for status and alerts
+    if latest_5min_price is not None:
+        current_price = latest_5min_price
+        price_source = "5-minute"
+    elif hour_avg_price is not None:
+        current_price = hour_avg_price
+        price_source = "hour average"
+    else:
+        current_price = None
+    
+    if current_price is not None:
+        # Price status indicator
+        if current_price <= st.session_state.alert_settings['low_threshold']:
+            status_class = "status-good"
+            status_text = f"Good time to use electricity ({price_source})"
+            price_level = "LOW"
+        elif current_price <= st.session_state.alert_settings['medium_threshold']:
+            status_class = "status-warning"
+            status_text = f"Moderate pricing ({price_source})"
+            price_level = "MEDIUM"
+        else:
+            status_class = "status-danger"
+            status_text = f"High pricing - consider reducing usage ({price_source})"
+            price_level = "HIGH"
+        
+        st.markdown(f'<p class="{status_class}"><strong>{status_text}</strong></p>', unsafe_allow_html=True)
+        
+        # Check for alerts
+        if st.session_state.alert_settings['alerts_enabled']:
+            alert_message = alerts.check_price_alert(current_price, st.session_state.alert_settings)
+            if alert_message:
+                st.warning(alert_message)
 
 with col2:
     st.header("5-Minute Pricing Trend")
@@ -314,11 +361,11 @@ with col3:
     st.header("Price Level")
     
     try:
-        if 'latest_price' in locals():
+        if 'current_price' in locals() and current_price is not None:
             # Price level gauge
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number",
-                value=latest_price,
+                value=current_price,
                 domain={'x': [0, 1], 'y': [0, 1]},
                 title={'text': "¢/kWh"},
                 gauge={
