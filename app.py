@@ -128,40 +128,44 @@ st.markdown("Real-time electricity pricing monitoring with historical analysis a
 st.sidebar.header("Dashboard Controls")
 
 # Auto-refresh toggle
-auto_refresh = st.sidebar.checkbox("Auto-refresh (5 minutes)", value=st.session_state.auto_refresh)
+auto_refresh = st.sidebar.checkbox("Auto-refresh (5 minutes)", value=st.session_state.auto_refresh, key="auto_refresh_cb")
 st.session_state.auto_refresh = auto_refresh
 
 # Alert settings
 st.sidebar.header("Price Alert Settings")
-alerts_enabled = st.sidebar.checkbox("Enable Alerts", value=st.session_state.alert_settings['alerts_enabled'])
+alerts_enabled = st.sidebar.checkbox("Enable Alerts", value=st.session_state.alert_settings['alerts_enabled'], key="alerts_enabled_cb")
 st.session_state.alert_settings['alerts_enabled'] = alerts_enabled
 
-if st.session_state.alert_settings['alerts_enabled']:
-    st.session_state.alert_settings['low_threshold'] = st.sidebar.slider(
+if alerts_enabled:
+    low_threshold = st.sidebar.slider(
         "Low Price Threshold (¢/kWh)", 
         min_value=0.0, 
         max_value=20.0, 
         value=st.session_state.alert_settings['low_threshold'],
         step=0.5
     )
-    st.session_state.alert_settings['medium_threshold'] = st.sidebar.slider(
+    medium_threshold = st.sidebar.slider(
         "Medium Price Threshold (¢/kWh)", 
         min_value=0.0, 
         max_value=25.0, 
         value=st.session_state.alert_settings['medium_threshold'],
         step=0.5
     )
-    st.session_state.alert_settings['high_threshold'] = st.sidebar.slider(
+    high_threshold = st.sidebar.slider(
         "High Price Threshold (¢/kWh)", 
         min_value=0.0, 
         max_value=30.0, 
         value=st.session_state.alert_settings['high_threshold'],
         step=0.5
     )
+    
+    st.session_state.alert_settings['low_threshold'] = low_threshold
+    st.session_state.alert_settings['medium_threshold'] = medium_threshold
+    st.session_state.alert_settings['high_threshold'] = high_threshold
 
 # Dashboard features toggle
 st.sidebar.header("Dashboard Features")
-show_day_ahead = st.sidebar.checkbox("📅 Show Day-Ahead Pricing", value=True)
+show_day_ahead = st.sidebar.checkbox("📅 Show Day-Ahead Pricing", value=True, key="show_day_ahead_cb")
 
 # Date range selection for historical data
 st.sidebar.header("Historical Data Range")
@@ -195,7 +199,7 @@ if (window.innerWidth < 768) {
 st.markdown(mobile_css, unsafe_allow_html=True)
 
 # Main dashboard content - responsive layout
-mobile_layout = st.sidebar.checkbox("📱 Mobile Layout", value=st.session_state.mobile_view)
+mobile_layout = st.sidebar.checkbox("📱 Mobile Layout", value=st.session_state.mobile_view, key="mobile_layout_cb")
 st.session_state.mobile_view = mobile_layout
 
 if mobile_layout:
@@ -298,62 +302,96 @@ with col1:
 with col2:
     st.header("5-Minute Pricing Trend")
     
-    # Get last 24 hours of 5-minute data
+    # Time period selector
+    time_periods = {
+        "Last 5 minutes": 5,
+        "Last 30 minutes": 30,
+        "Last 1 hour": 60,
+        "Last 3 hours": 180,
+        "Last 6 hours": 360,
+        "Last 24 hours": 1440
+    }
+    
+    selected_period = st.selectbox(
+        "Select time period:",
+        options=list(time_periods.keys()),
+        index=5  # Default to "Last 24 hours"
+    )
+    
+    minutes_back = time_periods[selected_period]
+    
+    # Get 5-minute data
     try:
         five_min_data = api.get_five_minute_feed()
         if five_min_data:
             df_5min = processor.process_five_minute_data(five_min_data)
             
-            # Create trend chart
-            fig_trend = go.Figure()
-            fig_trend.add_trace(go.Scatter(
-                x=df_5min['datetime'],
-                y=df_5min['price'],
-                mode='lines',
-                name='5-Minute Price',
-                line=dict(color='#1f77b4', width=2)
-            ))
+            # Filter data based on selected time period
+            from datetime import datetime, timedelta
+            import pytz
+            chicago_tz = pytz.timezone('America/Chicago')
+            current_time = datetime.now(chicago_tz)
+            cutoff_time = current_time - timedelta(minutes=minutes_back)
             
-            # Add threshold lines
-            fig_trend.add_hline(
-                y=st.session_state.alert_settings['low_threshold'],
-                line_dash="dash",
-                line_color="green",
-                annotation_text="Low Threshold"
-            )
-            fig_trend.add_hline(
-                y=st.session_state.alert_settings['medium_threshold'],
-                line_dash="dash",
-                line_color="orange",
-                annotation_text="Medium Threshold"
-            )
-            fig_trend.add_hline(
-                y=st.session_state.alert_settings['high_threshold'],
-                line_dash="dash",
-                line_color="red",
-                annotation_text="High Threshold"
-            )
+            # Filter the dataframe
+            df_filtered = df_5min[df_5min['datetime'] >= cutoff_time].copy()
             
-            fig_trend.update_layout(
-                title="Last 24 Hours - 5-Minute Pricing",
-                xaxis_title="Time",
-                yaxis_title="Price (¢/kWh)",
-                height=400,
-                showlegend=True
-            )
-            
-            st.plotly_chart(fig_trend, use_container_width=True)
-            
-            # Quick stats
-            st.subheader("24-Hour Statistics")
-            col_stats1, col_stats2, col_stats3 = st.columns(3)
-            
-            with col_stats1:
-                st.metric("Average", f"{df_5min['price'].mean():.2f}¢")
-            with col_stats2:
-                st.metric("Minimum", f"{df_5min['price'].min():.2f}¢")
-            with col_stats3:
-                st.metric("Maximum", f"{df_5min['price'].max():.2f}¢")
+            if not df_filtered.empty:
+                # Create trend chart
+                fig_trend = go.Figure()
+                fig_trend.add_trace(go.Scatter(
+                    x=df_filtered['datetime'],
+                    y=df_filtered['price'],
+                    mode='lines',
+                    name='5-Minute Price',
+                    line=dict(color='#1f77b4', width=2)
+                ))
+                
+                # Add threshold lines
+                fig_trend.add_hline(
+                    y=st.session_state.alert_settings['low_threshold'],
+                    line_dash="dash",
+                    line_color="green",
+                    annotation_text="Low Threshold"
+                )
+                fig_trend.add_hline(
+                    y=st.session_state.alert_settings['medium_threshold'],
+                    line_dash="dash",
+                    line_color="orange",
+                    annotation_text="Medium Threshold"
+                )
+                fig_trend.add_hline(
+                    y=st.session_state.alert_settings['high_threshold'],
+                    line_dash="dash",
+                    line_color="red",
+                    annotation_text="High Threshold"
+                )
+                
+                fig_trend.update_layout(
+                    title=f"{selected_period} - 5-Minute Pricing",
+                    xaxis_title="Time (CT)",
+                    yaxis_title="Price (¢/kWh)",
+                    height=400,
+                    showlegend=True
+                )
+                
+                st.plotly_chart(fig_trend, use_container_width=True)
+                
+                # Quick stats for the selected period
+                st.subheader(f"{selected_period} Statistics")
+                col_stats1, col_stats2, col_stats3 = st.columns(3)
+                
+                with col_stats1:
+                    st.metric("Average", f"{df_filtered['price'].mean():.2f}¢")
+                with col_stats2:
+                    st.metric("Minimum", f"{df_filtered['price'].min():.2f}¢")
+                with col_stats3:
+                    st.metric("Maximum", f"{df_filtered['price'].max():.2f}¢")
+                    
+                # Show data point count
+                st.caption(f"Showing {len(df_filtered)} data points over {selected_period.lower()}")
+            else:
+                st.warning(f"No data available for {selected_period.lower()}")
         else:
             st.error("Unable to fetch 5-minute pricing data")
     except Exception as e:
