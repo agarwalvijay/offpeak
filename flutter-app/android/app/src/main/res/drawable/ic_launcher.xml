@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Background -->
+    <path
+        android:fillColor="#1F77B4"
+        android:pathData="M0,0h108v108h-108z"/>
+    
+    <!-- Lightning bolt icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,20L35,50h15L40,88L60,58H45L55,28H45z"/>
+    
+    <!-- Price symbol -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M70,70c0,2.2 -1.8,4 -4,4H38c-2.2,0 -4,-1.8 -4,-4s1.8,-4 4,-4h28c2.2,0 4,1.8 4,4z"/>
+    
+    <!-- Additional design elements -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,75c0,1.5 -1.5,3 -3,3s-3,-1.5 -3,-3s1.5,-3 3,-3s3,1.5 3,3z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M94,33c0,1.5 -1.5,3 -3,3s-3,-1.5 -3,-3s1.5,-3 3,-3s3,1.5 3,3z"/>
+</vector>
