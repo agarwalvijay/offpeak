@@ -67,10 +67,10 @@ class DayAheadChart extends StatelessWidget {
             ),
             titlesData: FlTitlesData(
               show: true,
-              rightTitles: const AxisTitles(
+              rightTitles: AxisTitles(
                 sideTitles: SideTitles(showTitles: false),
               ),
-              topTitles: const AxisTitles(
+              topTitles: AxisTitles(
                 sideTitles: SideTitles(showTitles: false),
               ),
               bottomTitles: AxisTitles(

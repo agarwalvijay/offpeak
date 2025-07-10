@@ -12,7 +12,7 @@ dependencies:
   
   # UI and Charts
   cupertino_icons: ^1.0.2
-  fl_chart: ^0.55.0
+  fl_chart: ^0.50.6
   
   # HTTP and Data
   http: ^0.13.5

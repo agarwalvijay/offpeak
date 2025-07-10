@@ -1,0 +1,46 @@
+🏗️ Building release APK...
+Warning: Flutter support for your project's Android Gradle Plugin version (Android Gradle Plugin version 8.2.0) will soon be dropped. Please upgrade your Android Gradle Plugin version to a version of at least Android Gradle Plugin version 8.3.0 soon.
+Alternatively, use the flag "--android-skip-build-dependency-validation" to bypass this check.
+
+Potential fix: Your project's AGP version is typically defined in the plugins block of the `settings.gradle` file (/Users/vijayagarwal/vijay/comed/flutter_app/ComEDPricePulse/flutter-app/android/settings.gradle), by a plugin with the id of com.android.application.
+If you don't see a plugins block, your project was likely created with an older template version. In this case it is most likely defined in the top-level build.gradle file (/Users/vijayagarwal/vijay/comed/flutter_app/ComEDPricePulse/flutter-app/android/build.gradle) by the following line in the dependencies block of the buildscript: "classpath 'com.android.tools.build:gradle:<version>'".
+
+lib/widgets/price_chart.dart:64:29: Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+                sideTitles: SideTitles(showTitles: false),
+                            ^^^^^^^^^^
+lib/widgets/price_chart.dart:63:34: Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+              rightTitles: const AxisTitles(
+                                 ^^^^^^^^^^
+lib/widgets/price_chart.dart:67:29: Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+                sideTitles: SideTitles(showTitles: false),
+                            ^^^^^^^^^^
+lib/widgets/price_chart.dart:66:32: Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+              topTitles: const AxisTitles(
+                               ^^^^^^^^^^
+lib/widgets/day_ahead_chart.dart:71:29: Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+                sideTitles: SideTitles(showTitles: false),
+                            ^^^^^^^^^^
+lib/widgets/day_ahead_chart.dart:70:34: Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+              rightTitles: const AxisTitles(
+                                 ^^^^^^^^^^
+lib/widgets/day_ahead_chart.dart:74:29: Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+                sideTitles: SideTitles(showTitles: false),
+                            ^^^^^^^^^^
+lib/widgets/day_ahead_chart.dart:73:32: Error: Cannot invoke a non-'const' constructor where a const expression is expected.
+Try using a constructor or factory that is 'const'.
+              topTitles: const AxisTitles(
+                               ^^^^^^^^^^
+../../../../../.pub-cache/hosted/pub.dev/fl_chart-0.55.2/lib/src/utils/utils.dart:257:20: Error: Member not found: 'MediaQuery.boldTextOverride'.
+    if (MediaQuery.boldTextOverride(context)) {
+                   ^^^^^^^^^^^^^^^^
+Target kernel_snapshot_program failed: Exception
+
+
+FAILURE: Build failed with an exception.
