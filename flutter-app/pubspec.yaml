@@ -1,0 +1,46 @@
+name: comed_pricing_app
+description: ComEd electricity pricing monitoring app
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI and Charts
+  cupertino_icons: ^1.0.2
+  fl_chart: ^0.64.0
+  
+  # HTTP and Data
+  http: ^1.1.0
+  shared_preferences: ^2.2.2
+  
+  # Notifications
+  flutter_local_notifications: ^16.1.0
+  
+  # State Management
+  provider: ^6.0.5
+  
+  # Utils
+  intl: ^0.18.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+  
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: fonts/Roboto-Regular.ttf
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700

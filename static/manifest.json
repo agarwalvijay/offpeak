@@ -1,0 +1,22 @@
+{
+  "name": "ComEd Pricing Dashboard",
+  "short_name": "ComEd Pricing",
+  "description": "Real-time ComEd electricity pricing monitoring",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f77b4",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

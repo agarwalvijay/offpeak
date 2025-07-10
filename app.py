@@ -35,9 +35,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better spacing and alerts
+# Custom CSS for better spacing, alerts, and mobile responsiveness
 st.markdown("""
 <style>
+    /* PWA Meta Tags */
     .metric-card {
         background-color: #f0f2f6;
         padding: 1rem;
@@ -50,7 +51,73 @@ st.markdown("""
     .status-good { color: #28a745; }
     .status-warning { color: #ffc107; }
     .status-danger { color: #dc3545; }
+    
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding-top: 2rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        .metric-card {
+            margin: 0.25rem 0;
+            padding: 0.75rem;
+        }
+    }
+    
+    /* Install button for PWA */
+    .install-button {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #1f77b4;
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 12px 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1000;
+        display: none;
+    }
 </style>
+
+<!-- PWA Manifest and Service Worker -->
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#1f77b4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ComEd Pricing">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/static/sw.js');
+    });
+}
+
+// PWA Install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installButton = document.createElement('button');
+    installButton.className = 'install-button';
+    installButton.innerHTML = '📱 Install App';
+    installButton.style.display = 'block';
+    installButton.onclick = () => {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                installButton.style.display = 'none';
+            }
+        });
+    };
+    document.body.appendChild(installButton);
+});
+</script>
 """, unsafe_allow_html=True)
 
 # Main title
@@ -107,8 +174,31 @@ if st.session_state.auto_refresh:
         st.session_state.last_update = datetime.now()
         st.rerun()
 
-# Main dashboard content
-col1, col2, col3 = st.columns([2, 2, 1])
+# Mobile-responsive layout
+if 'mobile_view' not in st.session_state:
+    st.session_state.mobile_view = False
+
+# Detect mobile view based on viewport (approximate)
+mobile_css = """
+<script>
+if (window.innerWidth < 768) {
+    document.body.classList.add('mobile-view');
+}
+</script>
+"""
+st.markdown(mobile_css, unsafe_allow_html=True)
+
+# Main dashboard content - responsive layout
+if st.sidebar.checkbox("📱 Mobile Layout", value=st.session_state.mobile_view):
+    st.session_state.mobile_view = True
+    # Stack vertically for mobile
+    col1 = st.container()
+    col2 = st.container() 
+    col3 = st.container()
+else:
+    st.session_state.mobile_view = False
+    # Side by side for desktop
+    col1, col2, col3 = st.columns([2, 2, 1])
 
 with col1:
     st.header("Current Pricing")
