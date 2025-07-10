@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/simple_settings.dart';
 import '../models/pricing_data.dart';
 import '../services/comed_api_service.dart';
 import '../services/notification_service.dart';
@@ -184,14 +184,12 @@ class PricingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Load settings from SharedPreferences
+  /// Load settings from SimpleSettings
   Future<void> _loadSettings() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      
       // Load alert settings
-      final alertsJson = prefs.getString('alertSettings');
-      if (alertsJson != null) {
+      final alertsJson = SimpleSettings.getString('alertSettings');
+      if (alertsJson.isNotEmpty) {
         _alertSettings = AlertSettings.fromJson(
           Map<String, dynamic>.from(
             Uri.splitQueryString(alertsJson)
@@ -201,8 +199,8 @@ class PricingProvider extends ChangeNotifier {
       }
 
       // Load other settings
-      _autoRefresh = prefs.getBool('autoRefresh') ?? true;
-      final timePeriodIndex = prefs.getInt('selectedTimePeriod') ?? TimePeriod.twentyFourHours.index;
+      _autoRefresh = SimpleSettings.getBool('autoRefresh', defaultValue: true);
+      final timePeriodIndex = SimpleSettings.getDouble('selectedTimePeriod', defaultValue: TimePeriod.twentyFourHours.index.toDouble()).round();
       _selectedTimePeriod = TimePeriod.values[timePeriodIndex];
 
       notifyListeners();
@@ -213,20 +211,18 @@ class PricingProvider extends ChangeNotifier {
     }
   }
 
-  /// Save settings to SharedPreferences
+  /// Save settings to SimpleSettings
   Future<void> _saveSettings() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      
       // Save alert settings as query string format
       final alertsMap = _alertSettings.toJson();
       final alertsQuery = alertsMap.entries
           .map((e) => '${e.key}=${e.value}')
           .join('&');
       
-      await prefs.setString('alertSettings', alertsQuery);
-      await prefs.setBool('autoRefresh', _autoRefresh);
-      await prefs.setInt('selectedTimePeriod', _selectedTimePeriod.index);
+      await SimpleSettings.setString('alertSettings', alertsQuery);
+      await SimpleSettings.setBool('autoRefresh', _autoRefresh);
+      await SimpleSettings.setDouble('selectedTimePeriod', _selectedTimePeriod.index.toDouble());
     } catch (e) {
       if (kDebugMode) {
         print('Error saving settings: $e');
