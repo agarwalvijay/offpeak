@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import time
+import pytz
 
 class ComEdAPI:
     """
@@ -15,6 +16,9 @@ class ComEdAPI:
         self.session.headers.update({
             'User-Agent': 'ComEd-Pricing-Dashboard/1.0'
         })
+        # Chicago/Central timezone for ComEd
+        self.chicago_tz = pytz.timezone('America/Chicago')
+        self.utc_tz = pytz.UTC
     
     def get_five_minute_feed(self) -> Optional[List[Dict]]:
         """
@@ -232,7 +236,10 @@ class ComEdAPI:
                 year, month, day, hour, minute, second, price = match
                 
                 # JavaScript Date.UTC uses 0-based months, so add 1
-                dt = datetime(int(year), int(month) + 1, int(day), int(hour), int(minute), int(second))
+                # The ServletFeed returns times in Central Time, so we need to set the timezone
+                dt_naive = datetime(int(year), int(month) + 1, int(day), int(hour), int(minute), int(second))
+                # Localize to Chicago timezone
+                dt = self.chicago_tz.localize(dt_naive)
                 
                 result.append({
                     'datetime': dt,

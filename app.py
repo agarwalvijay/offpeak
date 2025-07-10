@@ -231,7 +231,7 @@ with col1:
             st.metric(
                 label="Current Hour Average Price",
                 value=f"{latest_price:.2f}¢/kWh",
-                delta=f"as of {latest_time.strftime('%I:%M %p')}"
+                delta=f"as of {latest_time.strftime('%I:%M %p CT')}"
             )
             
             st.markdown(f'<p class="{status_class}"><strong>{status_text}</strong></p>', unsafe_allow_html=True)
@@ -542,7 +542,8 @@ with col_info1:
 
 with col_info2:
     st.subheader("Last Updated")
-    st.markdown(f"**{st.session_state.last_update.strftime('%Y-%m-%d %I:%M:%S %p')}**")
+    st.markdown(f"**{st.session_state.last_update.strftime('%Y-%m-%d %I:%M:%S %p CT')}**")
+    st.markdown("*All times shown in Central Time (CT)*")
     
     # API status check
     try:

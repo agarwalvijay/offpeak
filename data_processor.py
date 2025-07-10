@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import datetime
 from typing import List, Dict
 import numpy as np
+import pytz
 
 class DataProcessor:
     """
@@ -9,19 +10,25 @@ class DataProcessor:
     """
     
     def __init__(self):
-        pass
+        # Chicago/Central timezone for ComEd
+        self.chicago_tz = pytz.timezone('America/Chicago')
+        self.utc_tz = pytz.UTC
     
     def convert_millis_to_datetime(self, millis: int) -> datetime:
         """
-        Convert UTC milliseconds to datetime object
+        Convert UTC milliseconds to Chicago timezone datetime object
         
         Args:
             millis: UTC milliseconds timestamp
             
         Returns:
-            datetime object
+            datetime object in Chicago timezone
         """
-        return datetime.fromtimestamp(millis / 1000.0)
+        # Create UTC datetime from timestamp
+        utc_dt = datetime.fromtimestamp(millis / 1000.0, tz=self.utc_tz)
+        # Convert to Chicago timezone
+        chicago_dt = utc_dt.astimezone(self.chicago_tz)
+        return chicago_dt
     
     def process_five_minute_data(self, api_data: List[Dict]) -> pd.DataFrame:
         """
