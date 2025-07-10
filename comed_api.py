@@ -247,7 +247,7 @@ class ComEdAPI:
                 
                 result.append({
                     'datetime': dt,
-                    'hour': int(hour),
+                    'hour': dt.hour,  # Use the localized datetime's hour (Central Time)
                     'price': float(price),
                     'millisUTC': str(int(dt.timestamp() * 1000))
                 })

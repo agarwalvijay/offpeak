@@ -408,8 +408,13 @@ if show_day_ahead:
                         annotation_position="top right"
                     )
                     
+                    # Get current Central Time for display
+                    import pytz
+                    chicago_tz = pytz.timezone('America/Chicago')
+                    current_ct = datetime.now(chicago_tz)
+                    
                     fig_day_ahead.update_layout(
-                        title=f"Day-Ahead Hourly Pricing - {day_ahead_date.strftime('%B %d, %Y')} (Central Time)<br><sub style='font-size:12px'>24-Hour Forecast - Generated at {datetime.now().strftime('%I:%M %p CT')}</sub>",
+                        title=f"Day-Ahead Hourly Pricing - {day_ahead_date.strftime('%B %d, %Y')} (Central Time)<br><sub style='font-size:12px'>24-Hour Forecast - Generated at {current_ct.strftime('%I:%M %p CT')}</sub>",
                         xaxis_title="Hour of Day (CT)",
                         yaxis_title="Price (¢/kWh)",
                         height=450,
@@ -423,7 +428,7 @@ if show_day_ahead:
                     )
                     
                     # Force unique key to prevent caching issues
-                    chart_key = f"day_ahead_{day_ahead_date.strftime('%Y%m%d')}_{datetime.now().strftime('%H%M%S')}"
+                    chart_key = f"day_ahead_{day_ahead_date.strftime('%Y%m%d')}_{current_ct.strftime('%H%M%S')}"
                     st.plotly_chart(fig_day_ahead, use_container_width=True, key=chart_key)
                     
                     # Best and worst hours
