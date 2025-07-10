@@ -33,7 +33,6 @@ class ComEdPricingApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
           primaryColor: const Color(0xFF1F77B4),
-          fontFamily: 'Roboto',
           appBarTheme: const AppBarTheme(
             backgroundColor: Color(0xFF1F77B4),
             foregroundColor: Colors.white,
