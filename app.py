@@ -362,8 +362,14 @@ if show_day_ahead:
             
             if day_ahead_data:
                 df_day_ahead = processor.process_day_ahead_data(day_ahead_data)
+                # Store in session state for use in second column
+                st.session_state.df_day_ahead = df_day_ahead
                 
                 if not df_day_ahead.empty:
+                    # Validate we have hourly data (24 points)
+                    if len(df_day_ahead) != 24:
+                        st.warning(f"⚠️ Expected 24 hourly data points, got {len(df_day_ahead)}. This may indicate data retrieval issues.")
+                    
                     # Day-ahead pricing chart
                     fig_day_ahead = go.Figure()
                     
@@ -403,7 +409,7 @@ if show_day_ahead:
                     )
                     
                     fig_day_ahead.update_layout(
-                        title=f"Day-Ahead Hourly Pricing - {day_ahead_date.strftime('%B %d, %Y')} (Central Time)",
+                        title=f"Day-Ahead Hourly Pricing - {day_ahead_date.strftime('%B %d, %Y')} (Central Time)<br><sub style='font-size:12px'>24-Hour Forecast - Generated at {datetime.now().strftime('%I:%M %p CT')}</sub>",
                         xaxis_title="Hour of Day (CT)",
                         yaxis_title="Price (¢/kWh)",
                         height=450,
@@ -411,11 +417,14 @@ if show_day_ahead:
                         xaxis=dict(
                             tickmode='linear',
                             tick0=0,
-                            dtick=2
+                            dtick=2,
+                            range=[-0.5, 23.5]  # Ensure full 24-hour range
                         )
                     )
                     
-                    st.plotly_chart(fig_day_ahead, use_container_width=True)
+                    # Force unique key to prevent caching issues
+                    chart_key = f"day_ahead_{day_ahead_date.strftime('%Y%m%d')}_{datetime.now().strftime('%H%M%S')}"
+                    st.plotly_chart(fig_day_ahead, use_container_width=True, key=chart_key)
                     
                     # Best and worst hours
                     min_price_hour = df_day_ahead.loc[df_day_ahead['price'].idxmin()]
@@ -438,34 +447,38 @@ if show_day_ahead:
             st.error(f"Error fetching day-ahead pricing: {str(e)}")
 
     with day_ahead_col2:
-        if 'df_day_ahead' in locals() and not df_day_ahead.empty:
-            # Day-ahead statistics
-            st.subheader("Day Statistics")
-            
-            avg_price = df_day_ahead['price'].mean()
-            min_price = df_day_ahead['price'].min()
-            max_price = df_day_ahead['price'].max()
-            price_range = max_price - min_price
-            
-            st.metric("Average", f"{avg_price:.2f}¢")
-            st.metric("Min Price", f"{min_price:.2f}¢")
-            st.metric("Max Price", f"{max_price:.2f}¢")
-            st.metric("Price Range", f"{price_range:.2f}¢")
-            
-            # Peak/Off-peak analysis
-            peak_hours = df_day_ahead[(df_day_ahead['hour'] >= 16) & (df_day_ahead['hour'] <= 20)]
-            off_peak_hours = df_day_ahead[(df_day_ahead['hour'] <= 6) | (df_day_ahead['hour'] >= 22)]
-            
-            if not peak_hours.empty and not off_peak_hours.empty:
-                peak_avg = peak_hours['price'].mean()
-                off_peak_avg = off_peak_hours['price'].mean()
-                savings_potential = ((peak_avg - off_peak_avg) / peak_avg) * 100
+        try:
+            if hasattr(st.session_state, 'df_day_ahead') and not st.session_state.df_day_ahead.empty:
+                df_day_ahead = st.session_state.df_day_ahead
+                # Day-ahead statistics
+                st.subheader("Day Statistics")
                 
-                st.markdown("---")
-                st.subheader("Peak vs Off-Peak")
-                st.metric("Peak Avg (4-8pm)", f"{peak_avg:.2f}¢")
-                st.metric("Off-Peak Avg", f"{off_peak_avg:.2f}¢")
-                st.metric("Potential Savings", f"{savings_potential:.1f}%")
+                avg_price = df_day_ahead['price'].mean()
+                min_price = df_day_ahead['price'].min()
+                max_price = df_day_ahead['price'].max()
+                price_range = max_price - min_price
+                
+                st.metric("Average", f"{avg_price:.2f}¢")
+                st.metric("Min Price", f"{min_price:.2f}¢")
+                st.metric("Max Price", f"{max_price:.2f}¢")
+                st.metric("Price Range", f"{price_range:.2f}¢")
+                
+                # Peak/Off-peak analysis
+                peak_hours = df_day_ahead[(df_day_ahead['hour'] >= 16) & (df_day_ahead['hour'] <= 20)]
+                off_peak_hours = df_day_ahead[(df_day_ahead['hour'] <= 6) | (df_day_ahead['hour'] >= 22)]
+                
+                if not peak_hours.empty and not off_peak_hours.empty:
+                    peak_avg = peak_hours['price'].mean()
+                    off_peak_avg = off_peak_hours['price'].mean()
+                    savings_potential = ((peak_avg - off_peak_avg) / peak_avg) * 100
+                    
+                    st.markdown("---")
+                    st.subheader("Peak vs Off-Peak")
+                    st.metric("Peak Avg (4-8pm)", f"{peak_avg:.2f}¢")
+                    st.metric("Off-Peak Avg", f"{off_peak_avg:.2f}¢")
+                    st.metric("Potential Savings", f"{savings_potential:.1f}%")
+        except Exception as e:
+            st.error(f"Error in day-ahead statistics: {str(e)}")
 
 # Historical Analysis Section
 st.header("Historical Analysis")
@@ -542,7 +555,18 @@ with col_info1:
 
 with col_info2:
     st.subheader("Last Updated")
-    st.markdown(f"**{st.session_state.last_update.strftime('%Y-%m-%d %I:%M:%S %p CT')}**")
+    # Convert last_update to Chicago timezone if it's not already
+    import pytz
+    chicago_tz = pytz.timezone('America/Chicago')
+    if st.session_state.last_update.tzinfo is None:
+        # If naive datetime, assume it's UTC and convert
+        utc_time = pytz.UTC.localize(st.session_state.last_update)
+        chicago_time = utc_time.astimezone(chicago_tz)
+    else:
+        # If already timezone-aware, convert to Chicago
+        chicago_time = st.session_state.last_update.astimezone(chicago_tz)
+    
+    st.markdown(f"**{chicago_time.strftime('%Y-%m-%d %I:%M:%S %p CT')}**")
     st.markdown("*All times shown in Central Time (CT)*")
     
     # API status check
