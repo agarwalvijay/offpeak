@@ -129,7 +129,7 @@ class HomeScreen extends StatelessWidget {
                               border: OutlineInputBorder(),
                             ),
                             items: TimePeriod.values
-                                .map((period) => DropdownMenuItem(
+                                .map((period) => DropdownMenuItem<TimePeriod>(
                                       value: period,
                                       child: Text(period.displayName),
                                     ))

@@ -43,9 +43,18 @@ class NotificationService {
   static Future<void> _requestPermissions() async {
     try {
       // Request Android notification permissions (for API 33+)
-      await _notifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestPermission();
+      final androidPlugin = _notifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        try {
+          await androidPlugin.requestNotificationsPermission();
+        } catch (e) {
+          // Fallback for older versions
+          if (kDebugMode) {
+            print('Notification permission request not available: $e');
+          }
+        }
+      }
 
       // Request iOS permissions
       await _notifications

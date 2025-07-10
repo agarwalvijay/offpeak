@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pricing_provider.dart';
+import '../models/pricing_data.dart';
 
 class StatisticsCard extends StatelessWidget {
   const StatisticsCard({super.key});

@@ -1,0 +1,32 @@
+Checking for wireless devices...
+
+[1]: macOS (macos)
+[2]: Chrome (chrome)
+Please choose one (or "q" to quit): 1
+Launching lib/main.dart on macOS in debug mode...
+Running pod install...                                             861ms
+lib/main.dart:42:22: Error: The argument type 'CardTheme' can't be assigned to the parameter type 'CardThemeData?'.
+ - 'CardTheme' is from 'package:flutter/src/material/card_theme.dart' ('/usr/local/Caskroom/flutter/3.32.6/flutter/packages/flutter/lib/src/material/card_theme.dart').
+ - 'CardThemeData' is from 'package:flutter/src/material/card_theme.dart' ('/usr/local/Caskroom/flutter/3.32.6/flutter/packages/flutter/lib/src/material/card_theme.dart').
+          cardTheme: CardTheme(
+                     ^
+lib/services/notification_service.dart:48:13: Error: The method 'requestPermission' isn't defined for the class 'AndroidFlutterLocalNotificationsPlugin'.
+ - 'AndroidFlutterLocalNotificationsPlugin' is from 'package:flutter_local_notifications/src/platform_flutter_local_notifications.dart' ('../../../../../.pub-cache/hosted/pub.dev/flutter_local_notifications-16.3.3/lib/src/platform_flutter_local_notifications.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'requestPermission'.
+          ?.requestPermission();
+            ^^^^^^^^^^^^^^^^^
+lib/widgets/statistics_card.dart:22:33: Error: The getter 'displayName' isn't defined for the class 'TimePeriod'.
+ - 'TimePeriod' is from 'package:comed_pricing_app/models/pricing_data.dart' ('lib/models/pricing_data.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'displayName'.
+                  '${timePeriod.displayName} Statistics',
+                                ^^^^^^^^^^^
+lib/widgets/statistics_card.dart:81:79: Error: The getter 'displayName' isn't defined for the class 'TimePeriod'.
+ - 'TimePeriod' is from 'package:comed_pricing_app/models/pricing_data.dart' ('lib/models/pricing_data.dart').
+Try correcting the name to the name of an existing getter, or defining a getter or field named 'displayName'.
+                      'Showing ${stats.dataPoints} readings over ${timePeriod.displayName.toLowerCase()}',
+                                                                              ^^^^^^^^^^^
+Target kernel_snapshot_program failed: Exception
+
+Command PhaseScriptExecution failed with a nonzero exit code
+warning: Run script build phase 'Run Script' will be run during every build because it does not specify any outputs. To address this warning, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'Flutter Assemble' from project 'Runner')
+** BUILD FAILED **
