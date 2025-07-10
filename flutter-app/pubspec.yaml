@@ -3,8 +3,8 @@ description: ComEd electricity pricing monitoring app
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
-  flutter: ">=3.10.0"
+  sdk: '>=2.17.0 <4.0.0'
+  flutter: ">=3.0.0"
 
 dependencies:
   flutter:
@@ -12,10 +12,10 @@ dependencies:
   
   # UI and Charts
   cupertino_icons: ^1.0.2
-  fl_chart: ^0.64.0
+  fl_chart: ^0.55.0
   
   # HTTP and Data
-  http: ^1.1.0
+  http: ^0.13.5
   
 
   
@@ -23,7 +23,7 @@ dependencies:
   provider: ^6.0.5
   
   # Utils
-  intl: ^0.18.1
+  intl: ^0.17.0
 
 dev_dependencies:
   flutter_test:
