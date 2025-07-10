@@ -380,15 +380,44 @@ if show_day_ahead:
                     # Day-ahead pricing chart
                     fig_day_ahead = go.Figure()
                     
+                    # Create color list based on both price thresholds and time context
+                    colors = []
+                    is_today = day_ahead_date == datetime.now().date()
+                    
+                    for idx, row in df_day_ahead.iterrows():
+                        price = row['price']
+                        hour = row['hour']
+                        
+                        # Determine color based on price thresholds
+                        if price <= st.session_state.alert_settings['low_threshold']:
+                            color = '#27ae60'  # Green
+                        elif price <= st.session_state.alert_settings['medium_threshold']:
+                            color = '#f39c12'  # Orange
+                        elif price <= st.session_state.alert_settings['high_threshold']:
+                            color = '#e67e22'  # Dark orange
+                        else:
+                            color = '#e74c3c'  # Red
+                        
+                        # If viewing today and hour has passed, make it semi-transparent
+                        if is_today and hour < current_hour_ct:
+                            # Convert hex to rgba with transparency
+                            if color == '#27ae60':
+                                color = 'rgba(39, 174, 96, 0.5)'
+                            elif color == '#f39c12':
+                                color = 'rgba(243, 156, 18, 0.5)'
+                            elif color == '#e67e22':
+                                color = 'rgba(230, 126, 34, 0.5)'
+                            else:
+                                color = 'rgba(231, 76, 60, 0.5)'
+                        
+                        colors.append(color)
+                    
                     # Add hourly bars
                     fig_day_ahead.add_trace(go.Bar(
                         x=df_day_ahead['hour'],
                         y=df_day_ahead['price'],
                         name='Day-Ahead Price',
-                        marker_color=['#27ae60' if p <= st.session_state.alert_settings['low_threshold'] 
-                                     else '#f39c12' if p <= st.session_state.alert_settings['medium_threshold']
-                                     else '#e67e22' if p <= st.session_state.alert_settings['high_threshold']
-                                     else '#e74c3c' for p in df_day_ahead['price']],
+                        marker_color=colors,
                         hovertemplate='<b>Hour %{x}:00 CT</b><br>Price: %{y:.2f}¢/kWh<extra></extra>'
                     ))
                     
@@ -444,6 +473,16 @@ if show_day_ahead:
                             range=[-0.5, 23.5]  # Ensure full 24-hour range
                         )
                     )
+                    
+                    # Add annotation explaining the color coding
+                    if is_today:
+                        fig_day_ahead.add_annotation(
+                            text="Past hours shown semi-transparent | Colors based on price thresholds",
+                            xref="paper", yref="paper",
+                            x=0, y=1.02,
+                            showarrow=False,
+                            font=dict(size=10, color="gray")
+                        )
                     
                     # Force unique key to prevent caching issues
                     chart_key = f"day_ahead_{day_ahead_date.strftime('%Y%m%d')}_{current_ct.strftime('%H%M%S')}"
