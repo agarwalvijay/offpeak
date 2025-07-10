@@ -38,14 +38,4 @@ class NotificationService {
       print('NotificationService: Recurring price check scheduled');
     }
   }
-
-  // Legacy method for compatibility
-  static Future<void> showNotification(String title, String body, {String? payload}) async {
-    await showPriceAlert(title: title, body: body, payload: payload);
-  }
-  
-  static Future<bool> areNotificationsEnabled() async {
-    // For simplified version, always return true
-    return true;
-  }
 }

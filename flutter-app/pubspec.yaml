@@ -18,8 +18,7 @@ dependencies:
   http: ^1.1.0
   shared_preferences: ^2.2.2
   
-  # Notifications
-  flutter_local_notifications: ^15.1.2
+
   
   # State Management
   provider: ^6.0.5

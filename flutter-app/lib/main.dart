@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// Notifications temporarily removed for build compatibility
 import 'services/comed_api_service.dart';
 import 'services/notification_service.dart';
 import 'models/pricing_data.dart';
 import 'screens/home_screen.dart';
 import 'providers/pricing_provider.dart';
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+// Notifications temporarily removed for build compatibility
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
