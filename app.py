@@ -370,6 +370,13 @@ if show_day_ahead:
                     if len(df_day_ahead) != 24:
                         st.warning(f"⚠️ Expected 24 hourly data points, got {len(df_day_ahead)}. This may indicate data retrieval issues.")
                     
+                    # Show current time context
+                    import pytz
+                    chicago_tz = pytz.timezone('America/Chicago')
+                    current_ct = datetime.now(chicago_tz)
+                    current_hour_ct = current_ct.hour
+                    st.info(f"📈 **Day-Ahead Forecast** for {day_ahead_date.strftime('%B %d, %Y')} | Current time: {current_ct.strftime('%I:%M %p CT')} (Hour {current_hour_ct})")
+                    
                     # Day-ahead pricing chart
                     fig_day_ahead = go.Figure()
                     
@@ -384,6 +391,17 @@ if show_day_ahead:
                                      else '#e74c3c' for p in df_day_ahead['price']],
                         hovertemplate='<b>Hour %{x}:00 CT</b><br>Price: %{y:.2f}¢/kWh<extra></extra>'
                     ))
+                    
+                    # Add current hour indicator if viewing today's forecast
+                    if day_ahead_date == datetime.now().date():
+                        fig_day_ahead.add_vline(
+                            x=current_hour_ct,
+                            line_dash="dot",
+                            line_color="blue",
+                            line_width=3,
+                            annotation_text="Current Hour",
+                            annotation_position="top"
+                        )
                     
                     # Add threshold lines
                     fig_day_ahead.add_hline(
