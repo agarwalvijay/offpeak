@@ -169,6 +169,84 @@ class ComEdAPI:
             print(f"Error parsing text response: {e}")
             return []
     
+    def get_day_ahead_pricing(self, date: datetime = None) -> Optional[List[Dict]]:
+        """
+        Get day-ahead pricing data for a specific date
+        
+        Args:
+            date: Date for day-ahead pricing (defaults to today)
+            
+        Returns:
+            List of dictionaries containing hour and price data
+        """
+        try:
+            if date is None:
+                date = datetime.now()
+            
+            # Format date as YYYYMMDD
+            date_str = date.strftime("%Y%m%d")
+            timestamp = int(time.time() * 1000)  # Current timestamp in milliseconds
+            
+            url = f"https://hourlypricing.comed.com/rrtp/ServletFeed?type=daynexttoday&date={date_str}&_={timestamp}"
+            response = self.session.get(url, timeout=30)
+            response.raise_for_status()
+            
+            # Parse the JavaScript array format response
+            data_text = response.text.strip()
+            
+            # Remove the outer brackets and split by comma groups
+            if data_text.startswith('[[') and data_text.endswith(']]'):
+                # Parse the JavaScript Date.UTC format
+                return self._parse_day_ahead_response(data_text, date)
+            else:
+                print(f"Unexpected day-ahead response format: {data_text[:100]}...")
+                return None
+                
+        except requests.RequestException as e:
+            print(f"Error fetching day-ahead pricing: {e}")
+            return None
+        except Exception as e:
+            print(f"Error parsing day-ahead pricing: {e}")
+            return None
+    
+    def _parse_day_ahead_response(self, data_text: str, base_date: datetime) -> List[Dict]:
+        """
+        Parse the day-ahead response format
+        
+        Args:
+            data_text: Raw response text in JavaScript array format
+            base_date: Base date for the pricing data
+            
+        Returns:
+            List of dictionaries with hour and price data
+        """
+        try:
+            import re
+            
+            # Extract all [Date.UTC(...), price] patterns
+            pattern = r'\[Date\.UTC\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\),\s*([\d.]+)\]'
+            matches = re.findall(pattern, data_text)
+            
+            result = []
+            for match in matches:
+                year, month, day, hour, minute, second, price = match
+                
+                # JavaScript Date.UTC uses 0-based months, so add 1
+                dt = datetime(int(year), int(month) + 1, int(day), int(hour), int(minute), int(second))
+                
+                result.append({
+                    'datetime': dt,
+                    'hour': int(hour),
+                    'price': float(price),
+                    'millisUTC': str(int(dt.timestamp() * 1000))
+                })
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error parsing day-ahead data: {e}")
+            return []
+
     def get_historical_data_batch(self, start_date: datetime, end_date: datetime, 
                                  batch_size_days: int = 7) -> List[Dict]:
         """

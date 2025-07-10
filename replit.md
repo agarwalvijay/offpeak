@@ -21,15 +21,17 @@ The application follows a modular architecture with clear separation of concerns
 
 ### Frontend (app.py)
 - **Technology**: Streamlit with Plotly for interactive charts
-- **Features**: Real-time dashboard, price alerts, historical data visualization
+- **Features**: Real-time dashboard, day-ahead pricing, price alerts, historical data visualization
 - **State Management**: Session state for alert settings, auto-refresh, and last update tracking
-- **Styling**: Custom CSS for metric cards and alert styling
+- **Styling**: Custom CSS for metric cards, alert styling, and mobile responsiveness
+- **PWA Support**: Progressive Web App capabilities for mobile installation
 
 ### API Integration (comed_api.py)
-- **Purpose**: Handles all communication with ComEd's pricing API
-- **Features**: 5-minute feed data retrieval, date range queries, error handling
+- **Purpose**: Handles all communication with ComEd's pricing APIs
+- **Features**: 5-minute feed data retrieval, current hour average, day-ahead pricing, date range queries, error handling
 - **Design**: Session-based HTTP client with proper timeout and error handling
 - **Rate Limiting**: Built-in request management to respect API limits
+- **Endpoints**: Real-time 5-minute feed, current hour average, day-ahead hourly pricing via ServletFeed
 
 ### Data Processing (data_processor.py)
 - **Purpose**: Transforms raw API data into usable formats

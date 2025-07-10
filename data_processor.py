@@ -240,6 +240,44 @@ class DataProcessor:
             'bin_centers': ((bin_edges[:-1] + bin_edges[1:]) / 2).tolist()
         }
     
+    def process_day_ahead_data(self, api_data: List[Dict]) -> pd.DataFrame:
+        """
+        Process day-ahead hourly pricing data into a pandas DataFrame
+        
+        Args:
+            api_data: List of dictionaries from ComEd day-ahead API
+            
+        Returns:
+            pandas DataFrame with datetime, hour, and price columns
+        """
+        if not api_data:
+            return pd.DataFrame(columns=['datetime', 'hour', 'price'])
+        
+        processed_data = []
+        
+        for entry in api_data:
+            try:
+                dt = entry['datetime']
+                hour = entry['hour']
+                price = float(entry['price'])
+                
+                processed_data.append({
+                    'datetime': dt,
+                    'hour': hour,
+                    'price': price
+                })
+            except (ValueError, KeyError) as e:
+                print(f"Error processing day-ahead entry {entry}: {e}")
+                continue
+        
+        df = pd.DataFrame(processed_data)
+        
+        # Sort by datetime
+        if not df.empty:
+            df = df.sort_values('datetime').reset_index(drop=True)
+        
+        return df
+
     def filter_data_by_time_range(self, df: pd.DataFrame, start_hour: int, end_hour: int) -> pd.DataFrame:
         """
         Filter data by hour of day

@@ -157,6 +157,10 @@ if st.session_state.alert_settings['alerts_enabled']:
         step=0.5
     )
 
+# Dashboard features toggle
+st.sidebar.header("Dashboard Features")
+show_day_ahead = st.sidebar.checkbox("📅 Show Day-Ahead Pricing", value=True)
+
 # Date range selection for historical data
 st.sidebar.header("Historical Data Range")
 start_date = st.sidebar.date_input("Start Date", value=datetime.now() - timedelta(days=7))
@@ -337,6 +341,131 @@ with col3:
             st.plotly_chart(fig_gauge, use_container_width=True)
     except:
         st.info("Price gauge will appear when data is available")
+
+# Day-Ahead Pricing Section
+if show_day_ahead:
+    st.header("Day-Ahead Pricing")
+
+    day_ahead_col1, day_ahead_col2 = st.columns([3, 1])
+
+    with day_ahead_col1:
+        # Date selector for day-ahead pricing
+        day_ahead_date = st.date_input(
+            "Select Date for Day-Ahead Pricing", 
+            value=datetime.now().date(),
+            help="Choose date to view day-ahead hourly pricing forecast"
+        )
+        
+        try:
+            # Get day-ahead pricing data
+            day_ahead_data = api.get_day_ahead_pricing(datetime.combine(day_ahead_date, datetime.min.time()))
+            
+            if day_ahead_data:
+                df_day_ahead = processor.process_day_ahead_data(day_ahead_data)
+                
+                if not df_day_ahead.empty:
+                    # Day-ahead pricing chart
+                    fig_day_ahead = go.Figure()
+                    
+                    # Add hourly bars
+                    fig_day_ahead.add_trace(go.Bar(
+                        x=df_day_ahead['hour'],
+                        y=df_day_ahead['price'],
+                        name='Day-Ahead Price',
+                        marker_color=['#27ae60' if p <= st.session_state.alert_settings['low_threshold'] 
+                                     else '#f39c12' if p <= st.session_state.alert_settings['medium_threshold']
+                                     else '#e67e22' if p <= st.session_state.alert_settings['high_threshold']
+                                     else '#e74c3c' for p in df_day_ahead['price']],
+                        hovertemplate='<b>Hour %{x}:00</b><br>Price: %{y:.2f}¢/kWh<extra></extra>'
+                    ))
+                    
+                    # Add threshold lines
+                    fig_day_ahead.add_hline(
+                        y=st.session_state.alert_settings['low_threshold'],
+                        line_dash="dash",
+                        line_color="green",
+                        annotation_text="Low Threshold",
+                        annotation_position="top right"
+                    )
+                    fig_day_ahead.add_hline(
+                        y=st.session_state.alert_settings['medium_threshold'],
+                        line_dash="dash",
+                        line_color="orange",
+                        annotation_text="Medium Threshold",
+                        annotation_position="top right"
+                    )
+                    fig_day_ahead.add_hline(
+                        y=st.session_state.alert_settings['high_threshold'],
+                        line_dash="dash",
+                        line_color="red",
+                        annotation_text="High Threshold",
+                        annotation_position="top right"
+                    )
+                    
+                    fig_day_ahead.update_layout(
+                        title=f"Day-Ahead Hourly Pricing - {day_ahead_date.strftime('%B %d, %Y')}",
+                        xaxis_title="Hour of Day",
+                        yaxis_title="Price (¢/kWh)",
+                        height=450,
+                        showlegend=False,
+                        xaxis=dict(
+                            tickmode='linear',
+                            tick0=0,
+                            dtick=2
+                        )
+                    )
+                    
+                    st.plotly_chart(fig_day_ahead, use_container_width=True)
+                    
+                    # Best and worst hours
+                    min_price_hour = df_day_ahead.loc[df_day_ahead['price'].idxmin()]
+                    max_price_hour = df_day_ahead.loc[df_day_ahead['price'].idxmax()]
+                    
+                    best_worst_col1, best_worst_col2 = st.columns(2)
+                    
+                    with best_worst_col1:
+                        st.success(f"**Best Hour:** {min_price_hour['hour']:02d}:00 - {min_price_hour['price']:.2f}¢/kWh")
+                    
+                    with best_worst_col2:
+                        st.error(f"**Most Expensive:** {max_price_hour['hour']:02d}:00 - {max_price_hour['price']:.2f}¢/kWh")
+                
+                else:
+                    st.info("No day-ahead pricing data available for the selected date")
+            else:
+                st.warning("Unable to fetch day-ahead pricing data")
+                
+        except Exception as e:
+            st.error(f"Error fetching day-ahead pricing: {str(e)}")
+
+    with day_ahead_col2:
+        if 'df_day_ahead' in locals() and not df_day_ahead.empty:
+            # Day-ahead statistics
+            st.subheader("Day Statistics")
+            
+            avg_price = df_day_ahead['price'].mean()
+            min_price = df_day_ahead['price'].min()
+            max_price = df_day_ahead['price'].max()
+            price_range = max_price - min_price
+            
+            st.metric("Average", f"{avg_price:.2f}¢")
+            st.metric("Min Price", f"{min_price:.2f}¢")
+            st.metric("Max Price", f"{max_price:.2f}¢")
+            st.metric("Price Range", f"{price_range:.2f}¢")
+            
+            # Peak/Off-peak analysis
+            peak_hours = df_day_ahead[(df_day_ahead['hour'] >= 16) & (df_day_ahead['hour'] <= 20)]
+            off_peak_hours = df_day_ahead[(df_day_ahead['hour'] <= 6) | (df_day_ahead['hour'] >= 22)]
+            
+            if not peak_hours.empty and not off_peak_hours.empty:
+                peak_avg = peak_hours['price'].mean()
+                off_peak_avg = off_peak_hours['price'].mean()
+                savings_potential = ((peak_avg - off_peak_avg) / peak_avg) * 100
+                
+                st.markdown("---")
+                st.subheader("Peak vs Off-Peak")
+                st.metric("Peak Avg (4-8pm)", f"{peak_avg:.2f}¢")
+                st.metric("Off-Peak Avg", f"{off_peak_avg:.2f}¢")
+                st.metric("Potential Savings", f"{savings_potential:.1f}%")
 
 # Historical Analysis Section
 st.header("Historical Analysis")
