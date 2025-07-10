@@ -236,10 +236,14 @@ class ComEdAPI:
                 year, month, day, hour, minute, second, price = match
                 
                 # JavaScript Date.UTC uses 0-based months, so add 1
-                # The ServletFeed returns times in Central Time, so we need to set the timezone
+                # Despite the Date.UTC format, the day-ahead data appears to be in local Chicago time
                 dt_naive = datetime(int(year), int(month) + 1, int(day), int(hour), int(minute), int(second))
-                # Localize to Chicago timezone
-                dt = self.chicago_tz.localize(dt_naive)
+                # Localize directly to Chicago timezone (the data is already in local time)
+                try:
+                    dt = self.chicago_tz.localize(dt_naive)
+                except ValueError:
+                    # Handle DST transitions by using fold parameter
+                    dt = self.chicago_tz.localize(dt_naive, is_dst=None)
                 
                 result.append({
                     'datetime': dt,

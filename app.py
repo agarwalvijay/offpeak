@@ -376,7 +376,7 @@ if show_day_ahead:
                                      else '#f39c12' if p <= st.session_state.alert_settings['medium_threshold']
                                      else '#e67e22' if p <= st.session_state.alert_settings['high_threshold']
                                      else '#e74c3c' for p in df_day_ahead['price']],
-                        hovertemplate='<b>Hour %{x}:00</b><br>Price: %{y:.2f}¢/kWh<extra></extra>'
+                        hovertemplate='<b>Hour %{x}:00 CT</b><br>Price: %{y:.2f}¢/kWh<extra></extra>'
                     ))
                     
                     # Add threshold lines
@@ -403,8 +403,8 @@ if show_day_ahead:
                     )
                     
                     fig_day_ahead.update_layout(
-                        title=f"Day-Ahead Hourly Pricing - {day_ahead_date.strftime('%B %d, %Y')}",
-                        xaxis_title="Hour of Day",
+                        title=f"Day-Ahead Hourly Pricing - {day_ahead_date.strftime('%B %d, %Y')} (Central Time)",
+                        xaxis_title="Hour of Day (CT)",
                         yaxis_title="Price (¢/kWh)",
                         height=450,
                         showlegend=False,
@@ -424,10 +424,10 @@ if show_day_ahead:
                     best_worst_col1, best_worst_col2 = st.columns(2)
                     
                     with best_worst_col1:
-                        st.success(f"**Best Hour:** {min_price_hour['hour']:02d}:00 - {min_price_hour['price']:.2f}¢/kWh")
+                        st.success(f"**Best Hour:** {min_price_hour['hour']:02d}:00 CT - {min_price_hour['price']:.2f}¢/kWh")
                     
                     with best_worst_col2:
-                        st.error(f"**Most Expensive:** {max_price_hour['hour']:02d}:00 - {max_price_hour['price']:.2f}¢/kWh")
+                        st.error(f"**Most Expensive:** {max_price_hour['hour']:02d}:00 CT - {max_price_hour['price']:.2f}¢/kWh")
                 
                 else:
                     st.info("No day-ahead pricing data available for the selected date")
