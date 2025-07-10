@@ -128,11 +128,13 @@ st.markdown("Real-time electricity pricing monitoring with historical analysis a
 st.sidebar.header("Dashboard Controls")
 
 # Auto-refresh toggle
-st.session_state.auto_refresh = st.sidebar.checkbox("Auto-refresh (5 minutes)", value=st.session_state.auto_refresh)
+auto_refresh = st.sidebar.checkbox("Auto-refresh (5 minutes)", value=st.session_state.auto_refresh)
+st.session_state.auto_refresh = auto_refresh
 
 # Alert settings
 st.sidebar.header("Price Alert Settings")
-st.session_state.alert_settings['alerts_enabled'] = st.sidebar.checkbox("Enable Alerts", value=st.session_state.alert_settings['alerts_enabled'])
+alerts_enabled = st.sidebar.checkbox("Enable Alerts", value=st.session_state.alert_settings['alerts_enabled'])
+st.session_state.alert_settings['alerts_enabled'] = alerts_enabled
 
 if st.session_state.alert_settings['alerts_enabled']:
     st.session_state.alert_settings['low_threshold'] = st.sidebar.slider(
@@ -193,16 +195,16 @@ if (window.innerWidth < 768) {
 st.markdown(mobile_css, unsafe_allow_html=True)
 
 # Main dashboard content - responsive layout
-if st.sidebar.checkbox("📱 Mobile Layout", value=st.session_state.mobile_view):
-    st.session_state.mobile_view = True
+mobile_layout = st.sidebar.checkbox("📱 Mobile Layout", value=st.session_state.mobile_view)
+st.session_state.mobile_view = mobile_layout
+
+if mobile_layout:
     # Stack vertically for mobile
     col1 = st.container()
-    col2 = st.container() 
-    col3 = st.container()
+    col2 = st.container()
 else:
-    st.session_state.mobile_view = False
     # Side by side for desktop
-    col1, col2, col3 = st.columns([2, 2, 1])
+    col1, col2 = st.columns([1, 1])
 
 with col1:
     st.header("Current Pricing")
@@ -357,37 +359,7 @@ with col2:
     except Exception as e:
         st.error(f"Error fetching 5-minute data: {str(e)}")
 
-with col3:
-    st.header("Price Level")
-    
-    try:
-        if 'current_price' in locals() and current_price is not None:
-            # Price level gauge
-            fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=current_price,
-                domain={'x': [0, 1], 'y': [0, 1]},
-                title={'text': "¢/kWh"},
-                gauge={
-                    'axis': {'range': [None, 25]},
-                    'bar': {'color': "darkblue"},
-                    'steps': [
-                        {'range': [0, st.session_state.alert_settings['low_threshold']], 'color': "lightgreen"},
-                        {'range': [st.session_state.alert_settings['low_threshold'], st.session_state.alert_settings['medium_threshold']], 'color': "yellow"},
-                        {'range': [st.session_state.alert_settings['medium_threshold'], 25], 'color': "lightcoral"}
-                    ],
-                    'threshold': {
-                        'line': {'color': "red", 'width': 4},
-                        'thickness': 0.75,
-                        'value': st.session_state.alert_settings['high_threshold']
-                    }
-                }
-            ))
-            
-            fig_gauge.update_layout(height=300)
-            st.plotly_chart(fig_gauge, use_container_width=True)
-    except:
-        st.info("Price gauge will appear when data is available")
+# Removed duplicative Price Level section
 
 # Day-Ahead Pricing Section
 if show_day_ahead:
