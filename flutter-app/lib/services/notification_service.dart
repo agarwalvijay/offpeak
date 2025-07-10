@@ -47,7 +47,7 @@ class NotificationService {
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidPlugin != null) {
         try {
-          await androidPlugin.requestNotificationsPermission();
+          await androidPlugin.requestPermission();
         } catch (e) {
           // Fallback for older versions
           if (kDebugMode) {
