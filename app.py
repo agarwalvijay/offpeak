@@ -127,16 +127,30 @@ st.markdown("Real-time electricity pricing monitoring with historical analysis a
 # Sidebar for controls
 st.sidebar.header("Dashboard Controls")
 
+# Define callback functions for checkboxes
+def toggle_auto_refresh():
+    st.session_state.auto_refresh = st.session_state.auto_refresh_cb
+
+def toggle_alerts():
+    st.session_state.alert_settings['alerts_enabled'] = st.session_state.alerts_enabled_cb
+
+def toggle_mobile():
+    st.session_state.mobile_view = st.session_state.mobile_layout_cb
+
 # Auto-refresh toggle
-auto_refresh = st.sidebar.checkbox("Auto-refresh (5 minutes)", value=st.session_state.auto_refresh, key="auto_refresh_cb")
-st.session_state.auto_refresh = auto_refresh
+st.sidebar.checkbox("Auto-refresh (5 minutes)", 
+                   value=st.session_state.auto_refresh, 
+                   key="auto_refresh_cb", 
+                   on_change=toggle_auto_refresh)
 
 # Alert settings
 st.sidebar.header("Price Alert Settings")
-alerts_enabled = st.sidebar.checkbox("Enable Alerts", value=st.session_state.alert_settings['alerts_enabled'], key="alerts_enabled_cb")
-st.session_state.alert_settings['alerts_enabled'] = alerts_enabled
+st.sidebar.checkbox("Enable Alerts", 
+                   value=st.session_state.alert_settings['alerts_enabled'], 
+                   key="alerts_enabled_cb", 
+                   on_change=toggle_alerts)
 
-if alerts_enabled:
+if st.session_state.alert_settings['alerts_enabled']:
     low_threshold = st.sidebar.slider(
         "Low Price Threshold (¢/kWh)", 
         min_value=0.0, 
@@ -199,10 +213,12 @@ if (window.innerWidth < 768) {
 st.markdown(mobile_css, unsafe_allow_html=True)
 
 # Main dashboard content - responsive layout
-mobile_layout = st.sidebar.checkbox("📱 Mobile Layout", value=st.session_state.mobile_view, key="mobile_layout_cb")
-st.session_state.mobile_view = mobile_layout
+st.sidebar.checkbox("📱 Mobile Layout", 
+                   value=st.session_state.mobile_view, 
+                   key="mobile_layout_cb", 
+                   on_change=toggle_mobile)
 
-if mobile_layout:
+if st.session_state.mobile_view:
     # Stack vertically for mobile
     col1 = st.container()
     col2 = st.container()
@@ -304,7 +320,6 @@ with col2:
     
     # Time period selector
     time_periods = {
-        "Last 5 minutes": 5,
         "Last 30 minutes": 30,
         "Last 1 hour": 60,
         "Last 3 hours": 180,
@@ -315,7 +330,7 @@ with col2:
     selected_period = st.selectbox(
         "Select time period:",
         options=list(time_periods.keys()),
-        index=5  # Default to "Last 24 hours"
+        index=4  # Default to "Last 24 hours"
     )
     
     minutes_back = time_periods[selected_period]
