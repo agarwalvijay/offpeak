@@ -74,11 +74,20 @@ The application follows a modular architecture with clear separation of concerns
 - Streamlit development server for local testing
 - Direct API access to ComEd pricing service
 
+### GCP Cloud Deployment
+- **Google Cloud Run**: Serverless deployment with auto-scaling
+- **Docker containerization**: Consistent deployment across environments
+- **Automated deployment**: Single script deployment to GCP
+- **Cost-effective**: Pay-per-use serverless model
+- **HTTPS**: Automatic SSL certificate provision
+- **Custom domains**: Support for custom domain mapping
+
 ### Production Considerations
-- **Hosting**: Streamlit Cloud or similar platform support
+- **Hosting**: Google Cloud Run (recommended) or Streamlit Cloud
 - **Monitoring**: Built-in error handling and API timeout management
 - **Performance**: Session state management for efficient data caching
 - **Scalability**: Stateless design allows for horizontal scaling
+- **Security**: Public access for electricity pricing data (non-sensitive)
 
 ### Configuration Management
 - Alert thresholds stored in session state

@@ -1,10 +1,15 @@
 [server]
 headless = true
 address = "0.0.0.0"
-port = 5000
+port = 8080
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false
 
 [theme]
-base = "light"
-
-[ui]
-hideTopBar = false
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
