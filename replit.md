@@ -76,11 +76,13 @@ The application follows a modular architecture with clear separation of concerns
 
 ### GCP Cloud Deployment
 - **Google Cloud Run**: Serverless deployment with auto-scaling
+- **GCP VM Instance**: Direct deployment to existing virtual machines
 - **Docker containerization**: Consistent deployment across environments
 - **Automated deployment**: Single script deployment to GCP
-- **Cost-effective**: Pay-per-use serverless model
-- **HTTPS**: Automatic SSL certificate provision
+- **Cost-effective**: Pay-per-use serverless model or VM-based hosting
+- **HTTPS**: Automatic SSL certificate provision (Cloud Run) or manual setup (VM)
 - **Custom domains**: Support for custom domain mapping
+- **Systemd service**: Automatic startup and service management on VM deployments
 
 ### Production Considerations
 - **Hosting**: Google Cloud Run (recommended) or Streamlit Cloud
