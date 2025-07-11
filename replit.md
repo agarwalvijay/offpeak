@@ -7,6 +7,7 @@ A real-time electricity pricing dashboard for ComEd customers that displays curr
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Infrastructure: Existing GCP VM with nginx server hosting aoknos.com, wants to add comed.theagarwals.com domain.
 
 ## System Architecture
 
@@ -77,12 +78,14 @@ The application follows a modular architecture with clear separation of concerns
 ### GCP Cloud Deployment
 - **Google Cloud Run**: Serverless deployment with auto-scaling
 - **GCP VM Instance**: Direct deployment to existing virtual machines
+- **nginx Reverse Proxy**: Custom domain hosting with SSL certificates
 - **Docker containerization**: Consistent deployment across environments
 - **Automated deployment**: Single script deployment to GCP
 - **Cost-effective**: Pay-per-use serverless model or VM-based hosting
-- **HTTPS**: Automatic SSL certificate provision (Cloud Run) or manual setup (VM)
-- **Custom domains**: Support for custom domain mapping
+- **HTTPS**: Automatic SSL certificate provision (Cloud Run) or Let's Encrypt (VM)
+- **Custom domains**: Support for custom domain mapping with nginx configuration
 - **Systemd service**: Automatic startup and service management on VM deployments
+- **Multi-site hosting**: nginx configuration supports multiple domains on same server
 
 ### Production Considerations
 - **Hosting**: Google Cloud Run (recommended) or Streamlit Cloud
