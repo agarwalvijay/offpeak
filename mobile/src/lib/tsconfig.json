@@ -1,0 +1,13 @@
+{
+  "//": "This lib is the shared, platform-agnostic source consumed by BOTH the Expo app (via the parent mobile/tsconfig.json) and the web app (which aliases @/lib here). It is self-contained on purpose: the web build's tsconfig resolver must NOT walk up to mobile/tsconfig.json, which `extends expo/tsconfig.base` and is unresolvable when only the web deps are installed (CI). Metro/EAS transpile via Babel and ignore this file.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true
+  }
+}
