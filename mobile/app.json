@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "OffPeak",
+    "slug": "offpeak",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "scheme": "offpeak",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b1220",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1220"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.atsumilabs.offpeak"
+    },
+    "android": {
+      "package": "com.atsumilabs.offpeak",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b1220"
+      },
+      "permissions": ["android.permission.RECEIVE_BOOT_COMPLETED"]
+    },
+    "plugins": [
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "OffPeakPrice",
+              "label": "OffPeak Price",
+              "description": "Current ComEd hourly price and level",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "widgetFeatures": "reconfigurable|configuration_optional",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
+    ],
+    "experiments": {
+      "tsconfigPaths": true
+    }
+  }
+}

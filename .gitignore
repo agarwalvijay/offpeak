@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+mobile/node_modules/
+
+# Web build
+dist/
+dist-ssr/
+*.local
+
+# Expo / native
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+*.orig.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Legacy Flutter/Android build artifacts (kept on disk, never committed)
+legacy/**/build/
+legacy/**/.gradle/
+legacy/**/.dart_tool/
+legacy/**/.idea/
+*.apk
+*.aab
+*.jks
+*.keystore

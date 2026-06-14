@@ -1,0 +1,32 @@
+import type { WidgetTaskHandlerProps } from "react-native-android-widget";
+import { fetchWidgetPrice } from "./widgetData";
+import { OffPeakWidget } from "./OffPeakWidget";
+
+/**
+ * Called by the OS for widget lifecycle events (added, periodic update,
+ * resized, clicked). Fetches the latest ComEd price and re-renders the widget.
+ */
+export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<void> {
+  const render = async () => {
+    let data: Awaited<ReturnType<typeof fetchWidgetPrice>> = null;
+    try {
+      data = await fetchWidgetPrice();
+    } catch {
+      // Render the placeholder on failure; the next periodic update retries.
+    }
+    props.renderWidget(<OffPeakWidget data={data} />);
+  };
+
+  switch (props.widgetAction) {
+    case "WIDGET_ADDED":
+    case "WIDGET_UPDATE":
+    case "WIDGET_RESIZED":
+      await render();
+      break;
+    case "WIDGET_CLICK":
+      if (props.clickAction === "REFRESH") await render();
+      break;
+    default:
+      break;
+  }
+}
