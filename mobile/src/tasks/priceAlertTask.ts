@@ -7,16 +7,17 @@ import * as TaskManager from "expo-task-manager";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+// Import from specific lib modules (not the @/lib barrel) so the native bundle
+// never pulls in the web-only deps the barrel re-exports (react-query/zustand).
+import { getFiveMinuteFeed } from "@/lib/comedApi";
+import { DEFAULT_ALERT_SETTINGS, type AlertSettings } from "@/lib/pricing";
 import {
   DEFAULT_ALERT_PREFS,
-  DEFAULT_ALERT_SETTINGS,
   DEFAULT_ALERT_STATE,
   evaluatePriceAlert,
-  getFiveMinuteFeed,
   type AlertPrefs,
-  type AlertSettings,
   type AlertState,
-} from "@/lib";
+} from "@/lib/priceAlerts";
 import { refreshOffPeakWidget } from "@/widgets/refreshWidgets";
 
 export const PRICE_ALERT_TASK = "offpeak-price-alert";

@@ -24,7 +24,7 @@
       "package": "com.atsumilabs.offpeak",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0b1220"
+        "backgroundImage": "./assets/adaptive-background.png"
       },
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",

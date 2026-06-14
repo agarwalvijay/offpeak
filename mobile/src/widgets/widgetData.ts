@@ -1,13 +1,10 @@
 // Headless data fetch for the home-screen widget. Reuses the shared ComEd
 // client + pricing logic — native has no CORS restriction, so it hits ComEd
 // directly (the default base URL).
-import {
-  ALERT_LEVEL_META,
-  DEFAULT_ALERT_SETTINGS,
-  getAlertLevel,
-  getCurrentHourAverage,
-  getFiveMinuteFeed,
-} from "@/lib";
+// Specific module imports (not the @/lib barrel) to keep react-query/zustand
+// out of the native bundle.
+import { getCurrentHourAverage, getFiveMinuteFeed } from "@/lib/comedApi";
+import { ALERT_LEVEL_META, DEFAULT_ALERT_SETTINGS, getAlertLevel } from "@/lib/pricing";
 
 export interface WidgetPrice {
   price: string;
