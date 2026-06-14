@@ -12,6 +12,7 @@ import {
   type DayAheadDay,
   type TimePeriod,
 } from "./pricing";
+import { DEFAULT_ALERT_PREFS, type AlertPrefs } from "./priceAlerts";
 
 export type Theme = "system" | "light" | "dark";
 
@@ -21,11 +22,13 @@ export interface SettingsState {
   timePeriod: TimePeriod;
   dayAheadDay: DayAheadDay;
   theme: Theme;
+  alertPrefs: AlertPrefs;
   setAlertSettings: (s: AlertSettings) => void;
   setAutoRefresh: (v: boolean) => void;
   setTimePeriod: (p: TimePeriod) => void;
   setDayAheadDay: (d: DayAheadDay) => void;
   setTheme: (t: Theme) => void;
+  setAlertPrefs: (p: AlertPrefs) => void;
 }
 
 export type SettingsStore = UseBoundStore<StoreApi<SettingsState>>;
@@ -39,11 +42,13 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
         timePeriod: "1h",
         dayAheadDay: "today",
         theme: "system",
+        alertPrefs: DEFAULT_ALERT_PREFS,
         setAlertSettings: (alertSettings) => set({ alertSettings }),
         setAutoRefresh: (autoRefresh) => set({ autoRefresh }),
         setTimePeriod: (timePeriod) => set({ timePeriod }),
         setDayAheadDay: (dayAheadDay) => set({ dayAheadDay }),
         setTheme: (theme) => set({ theme }),
+        setAlertPrefs: (alertPrefs) => set({ alertPrefs }),
       }),
       {
         name: "offpeak-settings",
@@ -53,6 +58,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
           autoRefresh: s.autoRefresh,
           timePeriod: s.timePeriod,
           theme: s.theme,
+          alertPrefs: s.alertPrefs,
         }),
       },
     ),

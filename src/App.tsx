@@ -12,15 +12,29 @@ import {
   usePricing,
 } from "@/lib";
 import { useSettings } from "./store";
+import { postAlertConfig } from "./native-bridge";
 import { PriceChart } from "./components/PriceChart";
 import { DayAheadChart } from "./components/DayAheadChart";
 import { SettingsModal } from "./components/SettingsModal";
 import { BoltIcon, RefreshIcon, SettingsIcon } from "./components/icons";
 
 export function App() {
-  const { alertSettings, autoRefresh, timePeriod, dayAheadDay, theme, setTimePeriod, setDayAheadDay } =
-    useSettings();
+  const {
+    alertSettings,
+    autoRefresh,
+    timePeriod,
+    dayAheadDay,
+    theme,
+    alertPrefs,
+    setTimePeriod,
+    setDayAheadDay,
+  } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
+
+  // Keep the native shell's background task in sync with alert config.
+  useEffect(() => {
+    postAlertConfig(alertSettings, alertPrefs);
+  }, [alertSettings, alertPrefs]);
 
   // Apply the chosen theme (and follow the OS when set to "system").
   useEffect(() => {

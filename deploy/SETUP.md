@@ -106,6 +106,29 @@ npx expo run:ios
 Bundle id `com.atsumilabs.offpeak`. The Android home-screen widget ("OffPeak
 Price") is configured in `app.json` and implemented in `mobile/src/widgets/`.
 
-> Note: a WebView-only iOS app can hit App Store guideline 4.2 ("minimum
-> functionality"). The native widget helps; consider adding native screens or
-> push alerts before submitting to Apple.
+### Price alerts (local notifications)
+
+The app monitors ComEd prices in the background and fires **local** notifications
+(no push server / APNs) when the price enters an enabled alert state — **High**
+(≥ high threshold), **Cheap** (≤ low threshold), or **Negative** (< 0), with a
+2-hour cooldown. Logic: `mobile/src/lib/priceAlerts.ts`; background task:
+`mobile/src/tasks/priceAlertTask.ts` (expo-task-manager + expo-background-task +
+expo-notifications).
+
+Config flows from the **web Settings → Price alerts** section through the WebView
+bridge (`src/native-bridge.ts` → `App.tsx onMessage` → AsyncStorage), so there's
+one settings UI. Thresholds are the same ones used for color-coding.
+
+**Testing on a device:**
+1. Build/run (`npx expo run:android`), open Settings → enable **Notify me**, grant
+   the OS permission prompt.
+2. To force a notification fast, set the **High** threshold to `0` (every price is
+   "high"), background the app, and wait for a background cycle (Android ~15 min;
+   on iOS it's opportunistic). Or trigger immediately in a dev build via
+   `BackgroundTask.triggerTaskWorkerForTestingAsync()`.
+3. Confirm the home-screen widget renders after adding it.
+
+> Note: a WebView-led iOS app can still hit App Store guideline 4.2 ("minimum
+> functionality"). Local notifications + the widget add native value and improve
+> the odds, but if Apple pushes back, the fallback is native screens (the shared
+> `mobile/src/lib` logic ports straight in).

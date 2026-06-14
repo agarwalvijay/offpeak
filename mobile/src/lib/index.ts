@@ -4,6 +4,7 @@
 
 export * from "./comedApi";
 export * from "./pricing";
+export * from "./priceAlerts";
 export * from "./format";
 export * from "./chart";
 export * from "./usePricing";

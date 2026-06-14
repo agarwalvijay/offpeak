@@ -9,8 +9,10 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
+import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { refreshOffPeakWidget } from "./src/widgets/refreshWidgets";
+import { configureNotifications, requestNotificationPermission } from "./src/notifications";
+import { registerPriceAlertTask, storeAlertConfig } from "./src/tasks/priceAlertTask";
 
 // The mobile app presents the same full-screen OffPeak web dashboard. Loading
 // the deployed URL (not a local bundle) is intentional: the /comed CORS proxy
@@ -29,6 +31,28 @@ export default function App() {
     });
     return () => sub.remove();
   }, []);
+
+  // Set up the notification handler/channel up front (permission is requested
+  // only when the user enables alerts in the web Settings).
+  useEffect(() => {
+    configureNotifications();
+  }, []);
+
+  // Messages from the web app (alert config + permission requests).
+  const onMessage = async (e: WebViewMessageEvent) => {
+    try {
+      const msg = JSON.parse(e.nativeEvent.data);
+      if (msg.type === "alertConfig") {
+        await storeAlertConfig({ thresholds: msg.thresholds, prefs: msg.prefs });
+        if (msg.prefs?.enabled) await registerPriceAlertTask();
+      } else if (msg.type === "requestNotifPermission") {
+        await requestNotificationPermission();
+        await registerPriceAlertTask();
+      }
+    } catch {
+      // ignore malformed messages
+    }
+  };
 
   return (
     <SafeAreaProvider>
@@ -55,6 +79,8 @@ export default function App() {
               ref={webRef}
               source={{ uri: APP_URL }}
               style={styles.web}
+              injectedJavaScriptBeforeContentLoaded={"window.__OFFPEAK_NATIVE__ = true; true;"}
+              onMessage={onMessage}
               onLoadEnd={() => setLoading(false)}
               onError={() => {
                 setError(true);

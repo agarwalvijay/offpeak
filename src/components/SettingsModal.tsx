@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useSettings } from "../store";
+import { requestNotifPermission } from "../native-bridge";
 import { CloseIcon } from "./icons";
+
+const ALERT_KINDS = [
+  ["high", "High price"],
+  ["cheap", "Cheap price"],
+  ["negative", "Negative pricing"],
+] as const;
 
 const THRESHOLDS = [
   { key: "low" as const, label: "Low", helper: "At or below: green", color: "#16a34a" },
@@ -9,8 +16,16 @@ const THRESHOLDS = [
 ];
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
-  const { alertSettings, autoRefresh, theme, setAlertSettings, setAutoRefresh, setTheme } =
-    useSettings();
+  const {
+    alertSettings,
+    autoRefresh,
+    theme,
+    alertPrefs,
+    setAlertSettings,
+    setAutoRefresh,
+    setTheme,
+    setAlertPrefs,
+  } = useSettings();
   const [vals, setVals] = useState({
     low: String(alertSettings.low),
     medium: String(alertSettings.medium),
@@ -89,6 +104,41 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
+
+        <div className="section-label">Price alerts</div>
+        <div className="switch-row">
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Notify me</div>
+            <div className="meta">
+              Background checks send a local notification (mobile app only)
+            </div>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={alertPrefs.enabled}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                setAlertPrefs({ ...alertPrefs, enabled });
+                if (enabled) requestNotifPermission();
+              }}
+            />
+            <span className="track" />
+          </label>
+        </div>
+        {alertPrefs.enabled && (
+          <div className="chips" style={{ marginTop: 2, marginBottom: 4 }}>
+            {ALERT_KINDS.map(([k, label]) => (
+              <button
+                key={k}
+                className={`chip ${alertPrefs[k] ? "chip--active" : ""}`}
+                onClick={() => setAlertPrefs({ ...alertPrefs, [k]: !alertPrefs[k] })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="section-label">Color thresholds (¢/kWh)</div>
         <p className="helper" style={{ marginTop: -4, marginBottom: 12 }}>

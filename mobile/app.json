@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.atsumilabs.offpeak"
+      "bundleIdentifier": "com.atsumilabs.offpeak",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch", "processing"]
+      }
     },
     "android": {
       "package": "com.atsumilabs.offpeak",
@@ -23,9 +26,15 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b1220"
       },
-      "permissions": ["android.permission.RECEIVE_BOOT_COMPLETED"]
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
     },
     "plugins": [
+      ["expo-notifications", { "color": "#2563eb" }],
+      "expo-background-task",
       [
         "react-native-android-widget",
         {
