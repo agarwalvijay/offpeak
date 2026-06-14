@@ -7,12 +7,12 @@ import { OffPeakWidget } from "./OffPeakWidget";
  * resized, clicked). Fetches the latest ComEd price and re-renders the widget.
  */
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<void> {
-  const render = async () => {
+  const render = async (preferSnapshot: boolean) => {
     let data: Awaited<ReturnType<typeof fetchWidgetPrice>> = null;
     try {
-      data = await fetchWidgetPrice();
+      data = await fetchWidgetPrice(preferSnapshot);
     } catch {
-      // Render the placeholder on failure; the next periodic update retries.
+      // fetchWidgetPrice already falls back to the last snapshot.
     }
     props.renderWidget(<OffPeakWidget data={data} />);
   };
@@ -21,10 +21,11 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps): Promise<
     case "WIDGET_ADDED":
     case "WIDGET_UPDATE":
     case "WIDGET_RESIZED":
-      await render();
+      await render(true);
       break;
     case "WIDGET_CLICK":
-      if (props.clickAction === "REFRESH") await render();
+      // Manual refresh forces a live fetch (bypasses the snapshot fast-path).
+      if (props.clickAction === "REFRESH") await render(false);
       break;
     default:
       break;

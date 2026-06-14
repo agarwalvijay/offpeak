@@ -12,7 +12,7 @@ import {
   usePricing,
 } from "@/lib";
 import { useSettings } from "./store";
-import { postAlertConfig } from "./native-bridge";
+import { postAlertConfig, postPriceSnapshot } from "./native-bridge";
 import { PriceChart } from "./components/PriceChart";
 import { DayAheadChart } from "./components/DayAheadChart";
 import { SettingsModal } from "./components/SettingsModal";
@@ -78,6 +78,21 @@ export function App() {
   const currentPrice = latest?.price ?? null;
   const level = currentPrice == null ? "normal" : getAlertLevel(currentPrice, alertSettings);
   const meta = ALERT_LEVEL_META[level];
+
+  // Share the current price with the home-screen widget so it mirrors the app.
+  useEffect(() => {
+    if (currentPrice == null) return;
+    postPriceSnapshot({
+      price: formatPrice(currentPrice),
+      level: meta.label,
+      color: meta.color,
+      hourAvg: currentHourAverage ? formatPrice(currentHourAverage.price) : "—",
+      updated: (lastUpdate ?? new Date()).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    });
+  }, [currentPrice, meta.label, meta.color, currentHourAverage, lastUpdate]);
 
   const thresholds = [
     { value: alertSettings.low, color: "#16a34a" },

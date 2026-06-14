@@ -40,8 +40,18 @@ export function OffPeakWidget({ data }: { data: WidgetPrice | null }) {
         }}
       >
         <TextWidget text="OffPeak" style={{ fontSize: 13, fontWeight: "700", color: FG }} />
-        <FlexWidget clickAction="REFRESH" style={{ paddingHorizontal: 4, paddingVertical: 2 }}>
-          <TextWidget text="⟳" style={{ fontSize: 15, color: DIM }} />
+        <FlexWidget
+          clickAction="REFRESH"
+          style={{
+            width: 38,
+            height: 38,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 19,
+            backgroundColor: "#1e2a44",
+          }}
+        >
+          <TextWidget text="⟳" style={{ fontSize: 19, color: FG }} />
         </FlexWidget>
       </FlexWidget>
 
@@ -68,7 +78,10 @@ export function OffPeakWidget({ data }: { data: WidgetPrice | null }) {
           </FlexWidget>
         </FlexWidget>
       ) : (
-        <TextWidget text="Tap to open" style={{ fontSize: 13, color: DIM }} />
+        <FlexWidget style={{ flexDirection: "column", flexGap: 2 }}>
+          <TextWidget text="—" style={{ fontSize: 36, fontWeight: "700", color: DIM }} />
+          <TextWidget text="Open the app to load" style={{ fontSize: 12, color: DIM }} />
+        </FlexWidget>
       )}
 
       {data ? (

@@ -2,7 +2,7 @@
 // window.__OFFPEAK_NATIVE__ and exposes window.ReactNativeWebView; in a plain
 // browser these are absent and every call here is a no-op, so the web app is
 // unaffected.
-import type { AlertPrefs, AlertSettings } from "@/lib";
+import type { AlertPrefs, AlertSettings, WidgetSnapshot } from "@/lib";
 
 interface RNWebView {
   postMessage: (msg: string) => void;
@@ -38,4 +38,12 @@ export function postAlertConfig(
 /** Ask native to request OS notification permission + register the task. */
 export function requestNotifPermission(): void {
   post({ type: "requestNotifPermission" });
+}
+
+/**
+ * Share the current price with the home-screen widget so it mirrors what the app
+ * is showing (avoids the app-says-5¢ / widget-says-3¢ mismatch).
+ */
+export function postPriceSnapshot(snapshot: WidgetSnapshot): void {
+  post({ type: "priceSnapshot", snapshot });
 }
