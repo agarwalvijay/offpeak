@@ -13,15 +13,19 @@ import {
   type TimePeriod,
 } from "./pricing";
 
+export type Theme = "system" | "light" | "dark";
+
 export interface SettingsState {
   alertSettings: AlertSettings;
   autoRefresh: boolean;
   timePeriod: TimePeriod;
   dayAheadDay: DayAheadDay;
+  theme: Theme;
   setAlertSettings: (s: AlertSettings) => void;
   setAutoRefresh: (v: boolean) => void;
   setTimePeriod: (p: TimePeriod) => void;
   setDayAheadDay: (d: DayAheadDay) => void;
+  setTheme: (t: Theme) => void;
 }
 
 export type SettingsStore = UseBoundStore<StoreApi<SettingsState>>;
@@ -34,10 +38,12 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
         autoRefresh: true,
         timePeriod: "1h",
         dayAheadDay: "today",
+        theme: "system",
         setAlertSettings: (alertSettings) => set({ alertSettings }),
         setAutoRefresh: (autoRefresh) => set({ autoRefresh }),
         setTimePeriod: (timePeriod) => set({ timePeriod }),
         setDayAheadDay: (dayAheadDay) => set({ dayAheadDay }),
+        setTheme: (theme) => set({ theme }),
       }),
       {
         name: "offpeak-settings",
@@ -46,6 +52,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
           alertSettings: s.alertSettings,
           autoRefresh: s.autoRefresh,
           timePeriod: s.timePeriod,
+          theme: s.theme,
         }),
       },
     ),

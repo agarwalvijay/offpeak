@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ALERT_LEVEL_META,
   computeStatistics,
@@ -18,9 +18,29 @@ import { SettingsModal } from "./components/SettingsModal";
 import { BoltIcon, RefreshIcon, SettingsIcon } from "./components/icons";
 
 export function App() {
-  const { alertSettings, autoRefresh, timePeriod, dayAheadDay, setTimePeriod, setDayAheadDay } =
+  const { alertSettings, autoRefresh, timePeriod, dayAheadDay, theme, setTimePeriod, setDayAheadDay } =
     useSettings();
   const [showSettings, setShowSettings] = useState(false);
+
+  // Apply the chosen theme (and follow the OS when set to "system").
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = () => {
+      const resolved =
+        theme === "system"
+          ? window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light"
+          : theme;
+      root.setAttribute("data-theme", resolved);
+    };
+    apply();
+    if (theme === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    }
+  }, [theme]);
 
   const {
     fiveMinuteData,
@@ -110,7 +130,7 @@ export function App() {
       ) : (
         <div className="dashboard">
           <div className="rail">
-            <section className="card">
+            <section className="card card--price">
               <div className="card__head">
                 <h3 className="card__title">Current price</h3>
               </div>
@@ -141,7 +161,7 @@ export function App() {
               </div>
             </section>
 
-            <section className="card">
+            <section className="card card--stats">
               <div className="card__head">
                 <h3 className="card__title">
                   Statistics · {TIME_PERIOD_META[timePeriod].longLabel}
@@ -173,7 +193,7 @@ export function App() {
           </div>
 
           <div className="charts">
-            <section className="card card--fill">
+            <section className="card card--fill card--trend">
               <div className="card__head">
                 <h3 className="card__title">Price trend</h3>
                 <div className="chips">
@@ -193,7 +213,7 @@ export function App() {
               </div>
             </section>
 
-            <section className="card card--fill">
+            <section className="card card--fill card--dayahead">
               <div className="card__head">
                 <h3 className="card__title">Day-ahead hourly</h3>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>

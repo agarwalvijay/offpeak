@@ -13,6 +13,25 @@
       content="Real-time ComEd hourly electricity pricing, trends, and price alerts."
     />
     <title>OffPeak — ComEd Hourly Pricing</title>
+    <script>
+      // Apply the saved theme before paint to avoid a flash.
+      (function () {
+        try {
+          var raw = localStorage.getItem("offpeak-settings");
+          var t = raw ? JSON.parse(raw).state.theme : "system";
+          var dark =
+            t === "dark" ||
+            (t !== "light" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute(
+            "data-theme",
+            dark ? "dark" : "light",
+          );
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

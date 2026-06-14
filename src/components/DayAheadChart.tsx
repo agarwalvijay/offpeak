@@ -84,8 +84,8 @@ export function DayAheadChart({ forecast, actuals }: Props) {
                 const y = yOf(t);
                 return (
                   <g key={i}>
-                    <line x1={box.left} y1={y} x2={box.right} y2={y} stroke="#243049" strokeWidth={1} />
-                    <text x={box.left - 8} y={y + 4} textAnchor="end" fontSize={11} fill="#64718c">
+                    <line className="chart-grid" x1={box.left} y1={y} x2={box.right} y2={y} strokeWidth={1} />
+                    <text className="chart-label" x={box.left - 8} y={y + 4} textAnchor="end" fontSize={11}>
                       {t.toFixed(1)}
                     </text>
                   </g>
@@ -116,11 +116,11 @@ export function DayAheadChart({ forecast, actuals }: Props) {
               {xLabels.map((l, i) => (
                 <text
                   key={`xl-${i}`}
+                  className="chart-label"
                   x={l.x}
                   y={height - 6}
                   textAnchor={i === 0 ? "start" : i === xLabels.length - 1 ? "end" : "middle"}
                   fontSize={11}
-                  fill="#64718c"
                 >
                   {l.text}
                 </text>

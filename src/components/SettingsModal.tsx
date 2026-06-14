@@ -9,7 +9,7 @@ const THRESHOLDS = [
 ];
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
-  const { alertSettings, autoRefresh, setAlertSettings, setAutoRefresh } =
+  const { alertSettings, autoRefresh, theme, setAlertSettings, setAutoRefresh, setTheme } =
     useSettings();
   const [vals, setVals] = useState({
     low: String(alertSettings.low),
@@ -68,6 +68,26 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             />
             <span className="track" />
           </label>
+        </div>
+
+        <div className="section-label">Appearance</div>
+        <div className="switch-row">
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Theme</div>
+            <div className="meta">Follow your device, or force light/dark</div>
+          </div>
+          <div className="segmented">
+            {(["system", "light", "dark"] as const).map((t) => (
+              <button
+                key={t}
+                className={theme === t ? "is-on" : ""}
+                onClick={() => setTheme(t)}
+                style={{ textTransform: "capitalize" }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="section-label">Color thresholds (¢/kWh)</div>

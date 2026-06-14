@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="dark"] {
   --bg: #0b1220;
   --bg-elev: #131c2e;
   --bg-elev-2: #1a2540;
@@ -12,6 +13,27 @@
   --red: #dc2626;
   --radius: 16px;
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --app-grad: #16223c;
+  --chart-grid: #243049;
+  --chart-label: #64718c;
+}
+
+[data-theme="light"] {
+  --bg: #eef1f7;
+  --bg-elev: #ffffff;
+  --bg-elev-2: #f3f5fa;
+  --border: #dde3ee;
+  --text: #0f1729;
+  --text-dim: #56607a;
+  --text-faint: #8b95aa;
+  --accent: #2563eb;
+  --green: #16a34a;
+  --orange: #ea580c;
+  --red: #dc2626;
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+  --app-grad: #dbe6f7;
+  --chart-grid: #e6eaf2;
+  --chart-label: #94a3b8;
 }
 
 * {
@@ -27,7 +49,11 @@ body,
 }
 
 body {
-  background: radial-gradient(1400px 700px at 50% -15%, #16223c 0%, var(--bg) 55%);
+  background: radial-gradient(
+    1400px 700px at 50% -15%,
+    var(--app-grad) 0%,
+    var(--bg) 55%
+  );
   color: var(--text);
   font-family:
     system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -342,6 +368,12 @@ body {
   height: 100%;
   display: block;
 }
+.chart-grid {
+  stroke: var(--chart-grid);
+}
+.chart-label {
+  fill: var(--chart-label);
+}
 .chart-empty {
   position: absolute;
   inset: 0;
@@ -592,14 +624,35 @@ body {
     flex-wrap: wrap;
     gap: 8px 10px;
   }
+  /* Flatten rail + charts into one column so cards can be reordered:
+     price → trend → stats → day-ahead → data source. */
   .dashboard {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
+  .rail,
   .charts {
-    grid-template-rows: 300px 300px;
+    display: contents;
+  }
+  .card--price {
+    order: 1;
+  }
+  .card--trend {
+    order: 2;
+  }
+  .card--stats {
+    order: 3;
+  }
+  .card--dayahead {
+    order: 4;
   }
   .status-card {
+    order: 5;
     margin-top: 0;
+  }
+  .card--fill {
+    min-height: 300px;
   }
 }
 
