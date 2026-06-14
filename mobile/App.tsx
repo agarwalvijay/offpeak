@@ -92,7 +92,6 @@ export default function App() {
               }}
               pullToRefreshEnabled
               allowsBackForwardNavigationGestures
-              decelerationRate="normal"
             />
             {loading && (
               <View style={styles.loaderOverlay} pointerEvents="none">
