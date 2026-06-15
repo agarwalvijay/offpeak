@@ -6,6 +6,8 @@ import {
   formatPrice,
   formatTime,
   getAlertLevel,
+  getEnabledUtilities,
+  isUtilityEnabled,
   TIME_PERIODS,
   TIME_PERIOD_META,
   todayActualHourly,
@@ -33,8 +35,17 @@ export function App() {
     onboarded,
     setTimePeriod,
     setDayAheadDay,
+    setUtility,
   } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
+
+  // A previously-selected market may no longer be offered (markets config
+  // changed). Fall back to the first enabled one so the UI never shows or
+  // queries a hidden market.
+  useEffect(() => {
+    if (!isUtilityEnabled(utility)) setUtility(getEnabledUtilities()[0]);
+  }, [utility, setUtility]);
+
   const utilityMeta = UTILITIES[utility];
   const zone = utilityMeta.zones
     ? (zoneByUtility[utility] ?? utilityMeta.defaultZone)

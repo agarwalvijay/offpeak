@@ -24,6 +24,11 @@ jobs:
           cache: npm
 
       - name: Build PWA
+        # OFFPEAK_MARKETS (repo variable, e.g. "comed,pjm,caiso") restricts the
+        # markets the UI offers. Unset → all markets. Baked into the bundle at
+        # build, so changing it needs a re-run of this workflow.
+        env:
+          VITE_OFFPEAK_MARKETS: ${{ vars.OFFPEAK_MARKETS }}
         run: |
           npm ci
           npm run build

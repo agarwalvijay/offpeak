@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UTILITIES, UTILITY_LIST } from "@/lib";
+import { getEnabledUtilities, UTILITIES } from "@/lib";
 import { useSettings } from "../store";
 import { requestNotifPermission } from "../native-bridge";
 import { CloseIcon } from "./icons";
@@ -84,7 +84,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             <div className="meta">Which grid's real-time prices to show</div>
           </div>
           <div className="segmented">
-            {UTILITY_LIST.map((u) => (
+            {getEnabledUtilities().map((u) => (
               <button
                 key={u}
                 className={utility === u ? "is-on" : ""}

@@ -161,6 +161,44 @@ export const UTILITY_LIST: Utility[] = [
   "pjm",
 ];
 
+// Which markets the UI offers (launch picker + settings). Defaults to all;
+// the web entry narrows this from the OFFPEAK_MARKETS build config. Kept as a
+// runtime setter (not a direct env read) so the shared lib stays bundler-
+// agnostic — only the web entry touches import.meta.env.
+let enabledUtilities: Utility[] = [...UTILITY_LIST];
+
+/** Parse a comma-separated markets string ("comed, pjm") into ids. */
+export function parseMarkets(raw?: string | null): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** Restrict the offered markets. Unknown ids are ignored; config order is
+ *  preserved (so the first listed market is the launch default); an empty or
+ *  all-invalid list falls back to every market (fail-open, never a blank UI). */
+export function setEnabledUtilities(ids: string[]): void {
+  const seen = new Set<Utility>();
+  const out: Utility[] = [];
+  for (const raw of ids) {
+    if (raw in UTILITIES && !seen.has(raw as Utility)) {
+      seen.add(raw as Utility);
+      out.push(raw as Utility);
+    }
+  }
+  enabledUtilities = out.length ? out : [...UTILITY_LIST];
+}
+
+/** The markets the UI should currently offer. */
+export function getEnabledUtilities(): Utility[] {
+  return enabledUtilities;
+}
+
+export function isUtilityEnabled(u: Utility): boolean {
+  return enabledUtilities.includes(u);
+}
+
 export interface PricingClient {
   getFiveMinuteFeed: () => Promise<PricingPoint[]>;
   getCurrentHourAverage: () => Promise<PricingPoint | null>;

@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { setComedBaseUrl } from "@/lib";
+import { parseMarkets, setComedBaseUrl, setEnabledUtilities } from "@/lib";
 import { App } from "./App";
 import "./index.css";
 
@@ -9,6 +9,11 @@ import "./index.css";
 // all ComEd traffic through a same-origin proxy (vite in dev/preview, server.js
 // in production). Native apps keep hitting ComEd directly.
 setComedBaseUrl("/comed");
+
+// Markets to surface in the UI come from the OFFPEAK_MARKETS build config (a
+// GitHub repo variable injected as VITE_OFFPEAK_MARKETS at deploy time). Unset
+// → every market. Runs before render so the launch/settings screens see it.
+setEnabledUtilities(parseMarkets(import.meta.env.VITE_OFFPEAK_MARKETS));
 
 const queryClient = new QueryClient({
   defaultOptions: {

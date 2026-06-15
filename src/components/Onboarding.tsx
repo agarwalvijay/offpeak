@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UTILITIES, UTILITY_LIST, type Utility } from "@/lib";
+import { getEnabledUtilities, UTILITIES, type Utility } from "@/lib";
 import { useSettings } from "../store";
 import { BoltIcon } from "./icons";
 
@@ -15,7 +15,8 @@ const REGION: Record<Utility, string> = {
 /** First-run screen: pick a utility before seeing the dashboard. */
 export function Onboarding() {
   const { setUtility, setZone, setOnboarded } = useSettings();
-  const [sel, setSel] = useState<Utility>("comed");
+  const enabled = getEnabledUtilities();
+  const [sel, setSel] = useState<Utility>(enabled[0]);
   const [selZone, setSelZone] = useState<string | undefined>(undefined);
 
   const zones = UTILITIES[sel].zones;
@@ -49,7 +50,7 @@ export function Onboarding() {
         <p className="onboard__sub">You can change this anytime in Settings.</p>
 
         <div className="onboard__opts">
-          {UTILITY_LIST.map((u) => (
+          {enabled.map((u) => (
             <button
               key={u}
               className={`onboard__opt ${sel === u ? "is-sel" : ""}`}
