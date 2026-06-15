@@ -10,9 +10,9 @@ const ALERT_KINDS = [
 ] as const;
 
 const THRESHOLDS = [
-  { key: "low" as const, label: "Low", helper: "At or below: green", color: "#16a34a" },
-  { key: "medium" as const, label: "Medium", helper: "At or above: orange", color: "#ea580c" },
-  { key: "high" as const, label: "High", helper: "At or above: red", color: "#dc2626" },
+  { key: "low" as const, label: "Low", helper: "At or below — cheap-price alert", color: "#16a34a" },
+  { key: "medium" as const, label: "Medium", helper: "At or above turns orange", color: "#ea580c" },
+  { key: "high" as const, label: "High", helper: "At or above turns red", color: "#dc2626" },
 ];
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {

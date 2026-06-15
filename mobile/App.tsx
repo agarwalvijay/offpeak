@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
+  Animated,
   AppState,
+  Easing,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { refreshOffPeakWidget } from "./src/widgets/refreshWidgets";
@@ -20,10 +23,123 @@ import { storeWidgetSnapshot } from "./src/widgets/widgetData";
 // only exists server-side, so the WebView gets the working day-ahead feed.
 const APP_URL = "https://offpeak.atsumilabs.com";
 
+/** One expanding/fading ring of the splash mark. */
+function PulseRing({ delay }: { delay: number }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(v, {
+        toValue: 1,
+        duration: 2200,
+        delay,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [delay, v]);
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 1.4,
+        borderColor: "#ffffff",
+        transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 2] }) }],
+        opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
+      }}
+    />
+  );
+}
+
+/** Short branded launch animation shown over the WebView until it loads. */
+function SplashOverlay({ visible }: { visible: boolean }) {
+  const fade = useRef(new Animated.Value(0)).current;
+  const enter = useRef(new Animated.Value(0)).current;
+  const bar = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(true);
+
+  useEffect(() => {
+    Animated.timing(fade, { toValue: 1, duration: 280, useNativeDriver: true }).start();
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 620,
+      easing: Easing.out(Easing.back(1.4)),
+      useNativeDriver: true,
+    }).start();
+    const loop = Animated.loop(
+      Animated.timing(bar, {
+        toValue: 1,
+        duration: 1300,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [bar, enter, fade]);
+
+  useEffect(() => {
+    if (!visible) {
+      Animated.timing(fade, { toValue: 0, duration: 420, useNativeDriver: true }).start(() =>
+        setMounted(false),
+      );
+    }
+  }, [visible, fade]);
+
+  if (!mounted) return null;
+  const scale = enter.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+  const barX = bar.interpolate({ inputRange: [0, 1], outputRange: [-52, 150] });
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]} pointerEvents="none">
+      <LinearGradient colors={["#16223c", "#0b1220"]} style={StyleSheet.absoluteFill} />
+      <View style={styles.splashCenter}>
+        <Animated.View style={{ alignItems: "center", opacity: enter, transform: [{ scale }] }}>
+          <View style={styles.markBox}>
+            <PulseRing delay={0} />
+            <PulseRing delay={733} />
+            <PulseRing delay={1466} />
+            <LinearGradient
+              colors={["#3b82f6", "#1e3a8a"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.mark}
+            >
+              <Image
+                source={require("./assets/splash-icon.png")}
+                style={{ width: 64, height: 64 }}
+                resizeMode="contain"
+              />
+            </LinearGradient>
+          </View>
+          <Text style={styles.wordmark}>OffPeak</Text>
+          <View style={styles.accent} />
+          <Text style={styles.tagline}>REAL-TIME · 5-MINUTE PRICING</Text>
+        </Animated.View>
+      </View>
+      <View style={styles.barTrack}>
+        <Animated.View style={[styles.barSeg, { transform: [{ translateX: barX }] }]}>
+          <LinearGradient
+            colors={["#ea580c", "#ffb95e"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function App() {
   const webRef = useRef<WebView>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [webLoaded, setWebLoaded] = useState(false);
+  const [minPassed, setMinPassed] = useState(false);
 
   // Refresh the home-screen widget when the app goes to the background.
   useEffect(() => {
@@ -33,13 +149,20 @@ export default function App() {
     return () => sub.remove();
   }, []);
 
-  // Set up the notification handler/channel up front (permission is requested
-  // only when the user enables alerts in the web Settings).
   useEffect(() => {
     configureNotifications();
   }, []);
 
-  // Messages from the web app (alert config + permission requests).
+  // Keep the splash up for a minimum beat, and never longer than ~5s.
+  useEffect(() => {
+    const min = setTimeout(() => setMinPassed(true), 1100);
+    const max = setTimeout(() => setWebLoaded(true), 5000);
+    return () => {
+      clearTimeout(min);
+      clearTimeout(max);
+    };
+  }, []);
+
   const onMessage = async (e: WebViewMessageEvent) => {
     try {
       const msg = JSON.parse(e.nativeEvent.data);
@@ -50,8 +173,6 @@ export default function App() {
         await requestNotificationPermission();
         await registerPriceAlertTask();
       } else if (msg.type === "priceSnapshot") {
-        // The app shared its current price — store it and update the widget so
-        // it matches what the app shows.
         await storeWidgetSnapshot(msg.snapshot);
         refreshOffPeakWidget();
       }
@@ -60,53 +181,51 @@ export default function App() {
     }
   };
 
+  const splashDone = (webLoaded && minPassed) || error;
+
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+      <View style={styles.root}>
         <StatusBar style="light" />
         {error ? (
-          <View style={styles.center}>
+          <SafeAreaView style={styles.center} edges={["top", "bottom"]}>
             <Text style={styles.errTitle}>Can't reach OffPeak</Text>
             <Text style={styles.errBody}>Check your connection and try again.</Text>
             <TouchableOpacity
               style={styles.btn}
               onPress={() => {
                 setError(false);
-                setLoading(true);
+                setWebLoaded(false);
                 webRef.current?.reload();
               }}
             >
               <Text style={styles.btnText}>Retry</Text>
             </TouchableOpacity>
-          </View>
+          </SafeAreaView>
         ) : (
-          <View style={styles.root}>
+          <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
             <WebView
               ref={webRef}
               source={{ uri: APP_URL }}
               style={styles.web}
               injectedJavaScriptBeforeContentLoaded={"window.__OFFPEAK_NATIVE__ = true; true;"}
               onMessage={onMessage}
-              onLoadEnd={() => setLoading(false)}
+              onLoadEnd={() => setWebLoaded(true)}
               onError={() => {
                 setError(true);
-                setLoading(false);
+                setWebLoaded(true);
               }}
               onHttpError={() => {
                 setError(true);
-                setLoading(false);
+                setWebLoaded(true);
               }}
               pullToRefreshEnabled
               allowsBackForwardNavigationGestures
             />
-            {loading && (
-              <View style={styles.loaderOverlay} pointerEvents="none">
-                <ActivityIndicator size="large" color="#2563eb" />
-              </View>
-            )}
-          </View>
+          </SafeAreaView>
         )}
-      </SafeAreaView>
+        <SplashOverlay visible={!splashDone} />
+      </View>
     </SafeAreaProvider>
   );
 }
@@ -120,6 +239,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     padding: 24,
+    backgroundColor: "#0b1220",
   },
   errTitle: { color: "#e8edf6", fontSize: 18, fontWeight: "700" },
   errBody: { color: "#93a0b8", fontSize: 14, textAlign: "center" },
@@ -131,14 +251,46 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   btnText: { color: "#fff", fontWeight: "600" },
-  loaderOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+
+  // Splash
+  splashCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
+  markBox: { width: 120, height: 120, alignItems: "center", justifyContent: "center" },
+  mark: {
+    width: 116,
+    height: 116,
+    borderRadius: 58,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0b1220",
+    shadowColor: "#3b82f6",
+    shadowOpacity: 0.5,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 16,
   },
+  wordmark: {
+    color: "#fff",
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    marginTop: 34,
+  },
+  accent: { width: 28, height: 2, borderRadius: 2, backgroundColor: "#ea580c", marginTop: 12 },
+  tagline: {
+    color: "rgba(243,246,252,0.72)",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 2.2,
+    marginTop: 12,
+  },
+  barTrack: {
+    position: "absolute",
+    bottom: 56,
+    alignSelf: "center",
+    width: 150,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    overflow: "hidden",
+  },
+  barSeg: { position: "absolute", top: 0, bottom: 0, width: 52, borderRadius: 2 },
 });

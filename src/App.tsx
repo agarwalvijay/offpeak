@@ -76,7 +76,7 @@ export function App() {
 
   const latest = fiveMinuteData.length ? fiveMinuteData[fiveMinuteData.length - 1] : null;
   const currentPrice = latest?.price ?? null;
-  const level = currentPrice == null ? "normal" : getAlertLevel(currentPrice, alertSettings);
+  const level = currentPrice == null ? "low" : getAlertLevel(currentPrice, alertSettings);
   const meta = ALERT_LEVEL_META[level];
 
   // Share the current price with the home-screen widget so it mirrors the app.

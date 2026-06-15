@@ -45,7 +45,7 @@ export function computeStatistics(data: PricingPoint[]): PricingStatistics {
 
 // --- Alert levels / thresholds -------------------------------------------------
 
-export type AlertLevel = "low" | "normal" | "medium" | "high";
+export type AlertLevel = "low" | "medium" | "high";
 
 export interface AlertSettings {
   low: number;
@@ -55,21 +55,24 @@ export interface AlertSettings {
 
 export const DEFAULT_ALERT_SETTINGS: AlertSettings = { low: 3, medium: 6, high: 10 };
 
-/** Mirrors AlertSettings.getAlertLevel in the Flutter app. */
+/**
+ * Three consistent tiers everywhere (settings, price card, widget, chart):
+ * Low (green) below the medium threshold, Medium (orange) up to the high
+ * threshold, High (red) at/above it. The `low` threshold is the cheap-price
+ * alert trigger (see priceAlerts), not a separate color.
+ */
 export function getAlertLevel(price: number, s: AlertSettings): AlertLevel {
   if (price >= s.high) return "high";
   if (price >= s.medium) return "medium";
-  if (price <= s.low) return "low";
-  return "normal";
+  return "low";
 }
 
 export const ALERT_LEVEL_META: Record<
   AlertLevel,
   { label: string; description: string; color: string }
 > = {
-  low: { label: "Low", description: "Great time to use electricity", color: "#16A34A" },
-  normal: { label: "Normal", description: "Standard pricing", color: "#2563EB" },
-  medium: { label: "Elevated", description: "Consider reducing usage", color: "#EA580C" },
+  low: { label: "Low", description: "Good time to use electricity", color: "#16A34A" },
+  medium: { label: "Medium", description: "Consider reducing usage", color: "#EA580C" },
   high: { label: "High", description: "Avoid high-energy activities", color: "#DC2626" },
 };
 
