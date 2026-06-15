@@ -423,9 +423,73 @@ async function isoneGet(path) {
   return JSON.parse(text);
 }
 
+// Hub + load-zone location IDs.
+const ISONE_LOCS = ["4000", "4001", "4002", "4003", "4004", "4005", "4006", "4007", "4008"];
+function isoneLoc(url) {
+  const z = url.searchParams.get("zone") || "4000";
+  return ISONE_LOCS.includes(z) ? z : "4000";
+}
+
+function asArray(x) {
+  return Array.isArray(x) ? x : x ? [x] : [];
+}
+
+/** RT 5-min LMPs → [{ millisUTC, price¢/kWh }]. BeginDate is ISO with offset. */
+function parseIsoneRt(json) {
+  return asArray(json && json.FiveMinLmps && json.FiveMinLmps.FiveMinLmp)
+    .map((x) => ({ millisUTC: Date.parse(x.BeginDate), price: Number((x.LmpTotal / 10).toFixed(2)) }))
+    .filter((p) => !Number.isNaN(p.millisUTC))
+    .sort((a, b) => a.millisUTC - b.millisUTC);
+}
+
+/** DAM hourly LMPs → [{ hour, price¢/kWh }] (hour from the Eastern timestamp). */
+function parseIsoneDam(json) {
+  return asArray(json && json.HourlyLmps && json.HourlyLmps.HourlyLmp)
+    .map((x) => ({ hour: parseInt(String(x.BeginDate).slice(11, 13), 10), price: Number((x.LmpTotal / 10).toFixed(2)) }))
+    .sort((a, b) => a.hour - b.hour);
+}
+
 async function handleIsone(req, res, url) {
   const seg = url.pathname.replace(/^\/isone\//, "");
   try {
+    if (seg === "rt") {
+      const loc = isoneLoc(url);
+      const key = `rt:${loc}`;
+      const c = isoneCache.get(key);
+      let data;
+      if (c && Date.now() - c.at < 60_000) data = c.data;
+      else {
+        const today = easternYmd(new Date());
+        const yest = easternYmd(new Date(Date.now() - 24 * 3600_000));
+        const [a, b] = await Promise.all([
+          isoneGet(`fiveminutelmp/day/${yest}/location/${loc}`).catch(() => ({})),
+          isoneGet(`fiveminutelmp/day/${today}/location/${loc}`),
+        ]);
+        data = [...parseIsoneRt(a), ...parseIsoneRt(b)].sort((x, y) => x.millisUTC - y.millisUTC);
+        isoneCache.set(key, { at: Date.now(), data });
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(data));
+    }
+    if (seg === "dam") {
+      const loc = isoneLoc(url);
+      const ymd = (url.searchParams.get("date") || "").replace(/[^0-9]/g, "");
+      if (!/^\d{8}$/.test(ymd)) {
+        res.writeHead(400);
+        return res.end("bad date");
+      }
+      const key = `dam:${loc}:${ymd}`;
+      const c = isoneCache.get(key);
+      let data;
+      if (c && Date.now() - c.at < 1800_000) data = c.data;
+      else {
+        const json = await isoneGet(`hourlylmp/da/final/day/${ymd}/location/${loc}`);
+        data = parseIsoneDam(json);
+        isoneCache.set(key, { at: Date.now(), data });
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(data));
+    }
     // Discovery passthrough: /isone/raw?path=<url-encoded path>.
     if (seg === "raw") {
       const path = url.searchParams.get("path") ?? "";

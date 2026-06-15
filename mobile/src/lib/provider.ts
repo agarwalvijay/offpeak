@@ -23,8 +23,13 @@ import {
   nyisoDayAheadPricing,
   nyisoFiveMinuteFeed,
 } from "./nyisoApi";
+import {
+  isoneCurrentHourAverage,
+  isoneDayAheadPricing,
+  isoneFiveMinuteFeed,
+} from "./isoneApi";
 
-export type Utility = "comed" | "caiso" | "ercot" | "nyiso";
+export type Utility = "comed" | "caiso" | "ercot" | "nyiso" | "isone";
 
 export interface UtilityZone {
   id: string;
@@ -97,9 +102,27 @@ export const UTILITIES: Record<Utility, UtilityMeta> = {
     ],
     defaultZone: "N.Y.C.",
   },
+  isone: {
+    id: "isone",
+    name: "ISO-NE",
+    subtitle: () => "ISO-NE real-time pricing",
+    source: "ISO-NE Web Services LMP",
+    zones: [
+      { id: "4000", label: "Hub" },
+      { id: "4004", label: "Connecticut" },
+      { id: "4008", label: "NE Mass / Boston" },
+      { id: "4006", label: "SE Mass" },
+      { id: "4007", label: "WC Mass" },
+      { id: "4005", label: "Rhode Island" },
+      { id: "4001", label: "Maine" },
+      { id: "4002", label: "New Hampshire" },
+      { id: "4003", label: "Vermont" },
+    ],
+    defaultZone: "4000",
+  },
 };
 
-export const UTILITY_LIST: Utility[] = ["comed", "caiso", "ercot", "nyiso"];
+export const UTILITY_LIST: Utility[] = ["comed", "caiso", "ercot", "nyiso", "isone"];
 
 export interface PricingClient {
   getFiveMinuteFeed: () => Promise<PricingPoint[]>;
@@ -131,6 +154,14 @@ export function pricingClient(utility: Utility, zone?: string): PricingClient {
       getFiveMinuteFeed: () => nyisoFiveMinuteFeed(z),
       getCurrentHourAverage: () => nyisoCurrentHourAverage(z),
       getDayAheadPricing: (date) => nyisoDayAheadPricing(z, date),
+    };
+  }
+  if (utility === "isone") {
+    const z = zone ?? UTILITIES.isone.defaultZone ?? "4000";
+    return {
+      getFiveMinuteFeed: () => isoneFiveMinuteFeed(z),
+      getCurrentHourAverage: () => isoneCurrentHourAverage(z),
+      getDayAheadPricing: (date) => isoneDayAheadPricing(z, date),
     };
   }
   return { getFiveMinuteFeed, getCurrentHourAverage, getDayAheadPricing };

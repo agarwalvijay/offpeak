@@ -8,6 +8,7 @@ const REGION: Record<Utility, string> = {
   caiso: "California · CAISO grid",
   ercot: "Texas · ERCOT grid",
   nyiso: "New York · NYISO grid",
+  isone: "New England · ISO-NE grid",
 };
 
 /** First-run screen: pick a utility before seeing the dashboard. */
