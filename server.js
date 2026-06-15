@@ -32,7 +32,7 @@ try {
 // server must also refuse their data endpoints so a stale/crafted request can't
 // reach a disabled provider. Unset / all-invalid → every market (fail-open, to
 // match the client). Must stay in sync with mobile/src/lib/provider.ts ids.
-const ALL_MARKETS = ["comed", "caiso", "ercot", "nyiso", "isone", "pjm", "miso"];
+const ALL_MARKETS = ["comed", "caiso", "ercot", "nyiso", "isone", "pjm", "miso", "spp"];
 const enabledMarkets = (() => {
   const ids = (process.env.OFFPEAK_MARKETS || "")
     .split(",")
@@ -943,6 +943,165 @@ async function handleMiso(req, res, url) {
   }
 }
 
+// --- SPP Marketplace (public file-browser CSVs) → clean JSON ------------------
+
+// SPP RT-by-location has only per-interval + latestInterval files (no daily
+// rollup), so we keep a rolling 24h buffer per hub: a cached 60s poll of
+// latestInterval extends it, and a one-time cold-start backfill seeds ~1h.
+const SPP_DL = "https://portal.spp.org/file-browser-api/download";
+const SPP_HUBS = ["SPPNORTH_HUB", "SPPSOUTH_HUB"];
+const SPP_DEFAULT_HUB = "SPPNORTH_HUB";
+const sppCache = new Map();
+const sppRtBuffer = { SPPNORTH_HUB: new Map(), SPPSOUTH_HUB: new Map() };
+let sppBackfilled = false;
+
+function sppHub(url) {
+  const z = (url.searchParams.get("zone") || SPP_DEFAULT_HUB).toUpperCase();
+  return SPP_HUBS.includes(z) ? z : SPP_DEFAULT_HUB;
+}
+
+/** SPP GMT column "MM/DD/YYYY HH:MM:SS" → UTC ms. */
+function sppGmtMs(s) {
+  const m = String(s).match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/);
+  return m ? Date.UTC(+m[3], +m[1] - 1, +m[2], +m[4], +m[5], +m[6]) : NaN;
+}
+
+async function sppGet(url) {
+  // NB: the SPP file-browser 404s on `Accept: text/csv`; it needs */*.
+  const r = await fetch(url, { headers: { Accept: "*/*", "User-Agent": "OffPeak/1.0" } });
+  if (!r.ok) throw new Error(`spp ${r.status}`);
+  return r.text();
+}
+
+/** Header-aware RT LMP CSV parse → [{ sl, lmp, gmtEndMs }] (column order varies). */
+function sppParseRt(csv) {
+  const lines = csv.split("\n");
+  const hi = lines.findIndex((l) => l.startsWith("Interval,"));
+  if (hi < 0) return [];
+  const cols = lines[hi].split(",");
+  const iSL = cols.indexOf("Settlement Location");
+  const iLMP = cols.indexOf("LMP");
+  const iEnd = cols.indexOf("GMTIntervalEnd");
+  if (iSL < 0 || iLMP < 0 || iEnd < 0) return [];
+  const out = [];
+  for (let k = hi + 1; k < lines.length; k++) {
+    const f = lines[k].split(",");
+    if (f.length <= iLMP) continue;
+    out.push({ sl: f[iSL], lmp: parseFloat(f[iLMP]), gmtEndMs: sppGmtMs(f[iEnd]) });
+  }
+  return out;
+}
+
+/** Append hub RT rows (interval end → start) into the 24h rolling buffer. */
+function sppAppend(rows) {
+  for (const row of rows) {
+    if (!SPP_HUBS.includes(row.sl) || Number.isNaN(row.gmtEndMs) || Number.isNaN(row.lmp)) {
+      continue;
+    }
+    sppRtBuffer[row.sl].set(row.gmtEndMs - 300_000, Number((row.lmp / 10).toFixed(2)));
+  }
+  const cutoff = Date.now() - 24 * 3600_000 - 600_000;
+  for (const h of SPP_HUBS) {
+    for (const k of sppRtBuffer[h].keys()) if (k < cutoff) sppRtBuffer[h].delete(k);
+  }
+}
+
+/** Central-time parts for a Date — per-interval filenames use SPP local time. */
+function sppChicagoParts(d) {
+  const p = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const g = (t) => p.find((x) => x.type === t).value;
+  const H = g("hour") === "24" ? "00" : g("hour");
+  return { yyyy: g("year"), mm: g("month"), dd: g("day"), stamp: `${g("year")}${g("month")}${g("day")}${H}${g("minute")}` };
+}
+
+/** One-time cold-start backfill: the last 12 per-interval files (~1h). Best-effort. */
+async function sppBackfill() {
+  const floor5 = Math.floor(Date.now() / 300_000) * 300_000;
+  const urls = [];
+  for (let i = 1; i <= 12; i++) {
+    const c = sppChicagoParts(new Date(floor5 - i * 300_000));
+    urls.push(
+      `${SPP_DL}/rtbm-lmp-by-location?path=/${c.yyyy}/${c.mm}/By_Interval/${c.dd}/RTBM-LMP-SL-${c.stamp}.csv`,
+    );
+  }
+  const results = await Promise.allSettled(urls.map((u) => sppGet(u)));
+  for (const r of results) if (r.status === "fulfilled") sppAppend(sppParseRt(r.value));
+}
+
+async function handleSpp(req, res, url) {
+  const seg = url.pathname.replace(/^\/spp\//, "");
+  try {
+    if (seg === "rt") {
+      const hub = sppHub(url);
+      const c = sppCache.get("rt");
+      if (!c || Date.now() - c.at >= 60_000) {
+        if (!sppBackfilled) {
+          sppBackfilled = true;
+          await sppBackfill();
+        }
+        sppAppend(
+          sppParseRt(await sppGet(`${SPP_DL}/rtbm-lmp-by-location?path=%2FRTBM-LMP-SL-latestInterval.csv`)),
+        );
+        sppCache.set("rt", { at: Date.now() });
+      }
+      const data = [...sppRtBuffer[hub].entries()]
+        .map(([millisUTC, price]) => ({ millisUTC, price }))
+        .sort((a, b) => a.millisUTC - b.millisUTC);
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(data));
+    }
+    if (seg === "dam") {
+      const hub = sppHub(url);
+      const ymd = (url.searchParams.get("date") || "").replace(/[^0-9]/g, "");
+      if (!/^\d{8}$/.test(ymd)) {
+        res.writeHead(400);
+        return res.end("bad date");
+      }
+      const key = `dam:${ymd}`;
+      const c = sppCache.get(key);
+      let csv;
+      if (c && Date.now() - c.at < 1800_000) csv = c.csv;
+      else {
+        csv = await sppGet(
+          `${SPP_DL}/da-lmp-by-settlement-location?path=/${ymd.slice(0, 4)}/${ymd.slice(4, 6)}/By_Day/DA-LMP-SL-${ymd}0100.csv`,
+        );
+        sppCache.set(key, { at: Date.now(), csv });
+      }
+      // DAM hour from the Central "Interval" (hour-ending) column → hour-beginning.
+      const lines = csv.split("\n");
+      const hi = lines.findIndex((l) => l.startsWith("Interval,"));
+      const cols = hi >= 0 ? lines[hi].split(",") : [];
+      const iSL = cols.indexOf("Settlement Location");
+      const iLMP = cols.indexOf("LMP");
+      const out = [];
+      for (let k = hi + 1; k < lines.length; k++) {
+        const f = lines[k].split(",");
+        if (iSL < 0 || iLMP < 0 || f.length <= iLMP || f[iSL] !== hub) continue;
+        const hm = String(f[0]).match(/ (\d{2}):/);
+        const lmp = parseFloat(f[iLMP]);
+        if (!hm || Number.isNaN(lmp)) continue;
+        out.push({ hour: (parseInt(hm[1], 10) - 1 + 24) % 24, price: Number((lmp / 10).toFixed(2)) });
+      }
+      out.sort((a, b) => a.hour - b.hour);
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(out));
+    }
+    res.writeHead(404);
+    res.end("not found");
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end(String(e && e.message ? e.message : e).slice(0, 300));
+  }
+}
+
 const server = createServer(async (req, res) => {
   try {
     // Runtime client config: the live enabled-markets list (same allowlist the
@@ -959,7 +1118,7 @@ const server = createServer(async (req, res) => {
 
     // Market data endpoints, each gated on the enabled-markets allowlist:
     // a disabled provider returns 404 (its UI is hidden, but enforce here too).
-    const market = (req.url.match(/^\/(comed|caiso|ercot|nyiso|isone|pjm|miso)(?:\/|$)/) || [])[1];
+    const market = (req.url.match(/^\/(comed|caiso|ercot|nyiso|isone|pjm|miso|spp)(?:\/|$)/) || [])[1];
     if (market && !marketEnabled(market)) {
       res.writeHead(404, { "Content-Type": "text/plain" });
       return res.end("Market not enabled");
@@ -984,6 +1143,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.url.startsWith("/miso/")) {
       return handleMiso(req, res, new URL(req.url, "http://localhost"));
+    }
+    if (req.url.startsWith("/spp/")) {
+      return handleSpp(req, res, new URL(req.url, "http://localhost"));
     }
 
     const url = new URL(req.url, "http://localhost");

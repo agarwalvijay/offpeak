@@ -58,6 +58,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
           isone: "4000",
           pjm: "33092371",
           miso: "ILLINOIS.HUB",
+          spp: "SPPNORTH_HUB",
         },
         onboarded: false,
         setAlertSettings: (alertSettings) => set({ alertSettings }),

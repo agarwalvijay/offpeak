@@ -9,6 +9,7 @@ export * from "./nyisoApi";
 export * from "./isoneApi";
 export * from "./pjmApi";
 export * from "./misoApi";
+export * from "./sppApi";
 export * from "./provider";
 export * from "./pricing";
 export * from "./priceAlerts";

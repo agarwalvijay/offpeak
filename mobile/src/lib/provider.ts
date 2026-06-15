@@ -38,6 +38,11 @@ import {
   misoDayAheadPricing,
   misoFiveMinuteFeed,
 } from "./misoApi";
+import {
+  sppCurrentHourAverage,
+  sppDayAheadPricing,
+  sppFiveMinuteFeed,
+} from "./sppApi";
 
 export type Utility =
   | "comed"
@@ -46,7 +51,8 @@ export type Utility =
   | "nyiso"
   | "isone"
   | "pjm"
-  | "miso";
+  | "miso"
+  | "spp";
 
 // PJM zones are pricing-node IDs (the API filters on pnode_id); keep the
 // human label alongside so the subtitle reads "PJM · ComEd", not the number.
@@ -180,6 +186,18 @@ export const UTILITIES: Record<Utility, UtilityMeta> = {
     ],
     defaultZone: "ILLINOIS.HUB",
   },
+  spp: {
+    id: "spp",
+    name: "SPP",
+    subtitle: (zone) =>
+      `SPP · ${zone === "SPPSOUTH_HUB" ? "South" : "North"} real-time pricing`,
+    source: "SPP Marketplace LMP",
+    zones: [
+      { id: "SPPNORTH_HUB", label: "SPP North" },
+      { id: "SPPSOUTH_HUB", label: "SPP South" },
+    ],
+    defaultZone: "SPPNORTH_HUB",
+  },
 };
 
 export const UTILITY_LIST: Utility[] = [
@@ -190,6 +208,7 @@ export const UTILITY_LIST: Utility[] = [
   "isone",
   "pjm",
   "miso",
+  "spp",
 ];
 
 // Which markets the UI offers (launch picker + settings). Defaults to all;
@@ -301,6 +320,14 @@ export function pricingClient(utility: Utility, zone?: string): PricingClient {
       getFiveMinuteFeed: () => misoFiveMinuteFeed(z),
       getCurrentHourAverage: () => misoCurrentHourAverage(z),
       getDayAheadPricing: (date) => misoDayAheadPricing(z, date),
+    };
+  }
+  if (utility === "spp") {
+    const z = zone ?? UTILITIES.spp.defaultZone ?? "SPPNORTH_HUB";
+    return {
+      getFiveMinuteFeed: () => sppFiveMinuteFeed(z),
+      getCurrentHourAverage: () => sppCurrentHourAverage(z),
+      getDayAheadPricing: (date) => sppDayAheadPricing(z, date),
     };
   }
   return { getFiveMinuteFeed, getCurrentHourAverage, getDayAheadPricing };
