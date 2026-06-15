@@ -32,7 +32,7 @@ try {
 // server must also refuse their data endpoints so a stale/crafted request can't
 // reach a disabled provider. Unset / all-invalid → every market (fail-open, to
 // match the client). Must stay in sync with mobile/src/lib/provider.ts ids.
-const ALL_MARKETS = ["comed", "caiso", "ercot", "nyiso", "isone", "pjm"];
+const ALL_MARKETS = ["comed", "caiso", "ercot", "nyiso", "isone", "pjm", "miso"];
 const enabledMarkets = (() => {
   const ids = (process.env.OFFPEAK_MARKETS || "")
     .split(",")
@@ -833,6 +833,116 @@ async function handlePjm(req, res, url) {
   }
 }
 
+// --- MISO public API + market reports → clean JSON ----------------------------
+
+// RT 5-min ex-post for the rolling market day (all CP nodes — ~30MB, ~6MB
+// gzipped; Node's fetch decompresses). One fetch serves every hub, cached 60s.
+const MISO_RT_URL =
+  "https://public-api.misoenergy.org/api/MarketPricing/GetRealTimeFiveMinExPost/Rolling";
+const MISO_HUBS = [
+  "ILLINOIS.HUB",
+  "INDIANA.HUB",
+  "MICHIGAN.HUB",
+  "MINN.HUB",
+  "MS.HUB",
+  "LOUISIANA.HUB",
+  "TEXAS.HUB",
+  "ARKANSAS.HUB",
+];
+const MISO_DEFAULT_HUB = "ILLINOIS.HUB";
+const misoCache = new Map();
+// Pull just the hub rows out of the big JSON array text — avoids parsing
+// hundreds of thousands of node rows into JS objects. Row shape:
+// ["<interval>","<cpnode>","<LMP>","<MLC>","<MCC>"].
+const MISO_HUB_RE = new RegExp(
+  '\\["([^"]+)","(' + MISO_HUBS.map((h) => h.replace(/\./g, "\\.")).join("|") + ')","([^"]+)"',
+  "g",
+);
+
+function misoHub(url) {
+  const z = (url.searchParams.get("zone") || MISO_DEFAULT_HUB).toUpperCase();
+  return MISO_HUBS.includes(z) ? z : MISO_DEFAULT_HUB;
+}
+
+/** RT text → { hub: [{ millisUTC, price¢/kWh }] }. INTERVAL is MISO EST (no DST). */
+function parseMisoRtText(text) {
+  const byHub = {};
+  for (const h of MISO_HUBS) byHub[h] = [];
+  MISO_HUB_RE.lastIndex = 0;
+  let m;
+  while ((m = MISO_HUB_RE.exec(text))) {
+    const ms = Date.parse(`${m[1]}-05:00`);
+    const price = Number((parseFloat(m[3]) / 10).toFixed(2));
+    if (!Number.isNaN(ms) && !Number.isNaN(price)) byHub[m[2]].push({ millisUTC: ms, price });
+  }
+  for (const h of MISO_HUBS) byHub[h].sort((a, b) => a.millisUTC - b.millisUTC);
+  return byHub;
+}
+
+/** DAM ExAnte CSV → [{ hour, price¢/kWh }] for one hub. Rows: Node,Type,Value,
+ *  HE 1..HE 24 (Hour-Ending EST); we take the LMP row, HE n → hour n-1. */
+function parseMisoDam(csv, hub) {
+  for (const line of csv.split("\n")) {
+    const f = line.split(",");
+    if (f[0] === hub && f[2] === "LMP") {
+      const out = [];
+      for (let he = 0; he < 24; he++) {
+        const v = parseFloat(f[3 + he]);
+        if (!Number.isNaN(v)) out.push({ hour: he, price: Number((v / 10).toFixed(2)) });
+      }
+      return out;
+    }
+  }
+  return [];
+}
+
+async function handleMiso(req, res, url) {
+  const seg = url.pathname.replace(/^\/miso\//, "");
+  try {
+    if (seg === "rt") {
+      const hub = misoHub(url);
+      const c = misoCache.get("rt");
+      let byHub;
+      if (c && Date.now() - c.at < 60_000) byHub = c.byHub;
+      else {
+        const r = await fetch(MISO_RT_URL, { headers: { Accept: "application/json" } });
+        if (!r.ok) throw new Error(`miso rt ${r.status}`);
+        byHub = parseMisoRtText(await r.text());
+        misoCache.set("rt", { at: Date.now(), byHub });
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(byHub[hub] || []));
+    }
+    if (seg === "dam") {
+      const hub = misoHub(url);
+      const ymd = (url.searchParams.get("date") || "").replace(/[^0-9]/g, "");
+      if (!/^\d{8}$/.test(ymd)) {
+        res.writeHead(400);
+        return res.end("bad date");
+      }
+      const key = `dam:${ymd}`;
+      const c = misoCache.get(key);
+      let csv;
+      if (c && Date.now() - c.at < 1800_000) csv = c.csv;
+      else {
+        const r = await fetch(
+          `https://docs.misoenergy.org/marketreports/${ymd}_da_exante_lmp.csv`,
+        );
+        if (!r.ok) throw new Error(`miso dam ${r.status}`);
+        csv = await r.text();
+        misoCache.set(key, { at: Date.now(), csv });
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(parseMisoDam(csv, hub)));
+    }
+    res.writeHead(404);
+    res.end("not found");
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end(String(e && e.message ? e.message : e).slice(0, 300));
+  }
+}
+
 const server = createServer(async (req, res) => {
   try {
     // Runtime client config: the live enabled-markets list (same allowlist the
@@ -849,7 +959,7 @@ const server = createServer(async (req, res) => {
 
     // Market data endpoints, each gated on the enabled-markets allowlist:
     // a disabled provider returns 404 (its UI is hidden, but enforce here too).
-    const market = (req.url.match(/^\/(comed|caiso|ercot|nyiso|isone|pjm)(?:\/|$)/) || [])[1];
+    const market = (req.url.match(/^\/(comed|caiso|ercot|nyiso|isone|pjm|miso)(?:\/|$)/) || [])[1];
     if (market && !marketEnabled(market)) {
       res.writeHead(404, { "Content-Type": "text/plain" });
       return res.end("Market not enabled");
@@ -871,6 +981,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.url.startsWith("/pjm/")) {
       return handlePjm(req, res, new URL(req.url, "http://localhost"));
+    }
+    if (req.url.startsWith("/miso/")) {
+      return handleMiso(req, res, new URL(req.url, "http://localhost"));
     }
 
     const url = new URL(req.url, "http://localhost");

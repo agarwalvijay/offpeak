@@ -57,6 +57,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
           nyiso: "N.Y.C.",
           isone: "4000",
           pjm: "33092371",
+          miso: "ILLINOIS.HUB",
         },
         onboarded: false,
         setAlertSettings: (alertSettings) => set({ alertSettings }),

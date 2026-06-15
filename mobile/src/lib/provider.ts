@@ -33,8 +33,20 @@ import {
   pjmDayAheadPricing,
   pjmFiveMinuteFeed,
 } from "./pjmApi";
+import {
+  misoCurrentHourAverage,
+  misoDayAheadPricing,
+  misoFiveMinuteFeed,
+} from "./misoApi";
 
-export type Utility = "comed" | "caiso" | "ercot" | "nyiso" | "isone" | "pjm";
+export type Utility =
+  | "comed"
+  | "caiso"
+  | "ercot"
+  | "nyiso"
+  | "isone"
+  | "pjm"
+  | "miso";
 
 // PJM zones are pricing-node IDs (the API filters on pnode_id); keep the
 // human label alongside so the subtitle reads "PJM · ComEd", not the number.
@@ -150,6 +162,24 @@ export const UTILITIES: Record<Utility, UtilityMeta> = {
     zones: PJM_ZONES,
     defaultZone: "33092371",
   },
+  miso: {
+    id: "miso",
+    name: "MISO",
+    subtitle: (zone) =>
+      `MISO · ${(zone ?? "ILLINOIS.HUB").replace(".HUB", "")} real-time pricing`,
+    source: "MISO Real-Time LMP",
+    zones: [
+      { id: "ILLINOIS.HUB", label: "Illinois" },
+      { id: "INDIANA.HUB", label: "Indiana" },
+      { id: "MICHIGAN.HUB", label: "Michigan" },
+      { id: "MINN.HUB", label: "Minnesota" },
+      { id: "MS.HUB", label: "Mississippi" },
+      { id: "LOUISIANA.HUB", label: "Louisiana" },
+      { id: "ARKANSAS.HUB", label: "Arkansas" },
+      { id: "TEXAS.HUB", label: "Texas" },
+    ],
+    defaultZone: "ILLINOIS.HUB",
+  },
 };
 
 export const UTILITY_LIST: Utility[] = [
@@ -159,6 +189,7 @@ export const UTILITY_LIST: Utility[] = [
   "nyiso",
   "isone",
   "pjm",
+  "miso",
 ];
 
 // Which markets the UI offers (launch picker + settings). Defaults to all;
@@ -262,6 +293,14 @@ export function pricingClient(utility: Utility, zone?: string): PricingClient {
       getFiveMinuteFeed: () => pjmFiveMinuteFeed(z),
       getCurrentHourAverage: () => pjmCurrentHourAverage(z),
       getDayAheadPricing: (date) => pjmDayAheadPricing(z, date),
+    };
+  }
+  if (utility === "miso") {
+    const z = zone ?? UTILITIES.miso.defaultZone ?? "ILLINOIS.HUB";
+    return {
+      getFiveMinuteFeed: () => misoFiveMinuteFeed(z),
+      getCurrentHourAverage: () => misoCurrentHourAverage(z),
+      getDayAheadPricing: (date) => misoDayAheadPricing(z, date),
     };
   }
   return { getFiveMinuteFeed, getCurrentHourAverage, getDayAheadPricing };

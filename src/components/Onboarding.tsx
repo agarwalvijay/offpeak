@@ -10,6 +10,7 @@ const REGION: Record<Utility, string> = {
   nyiso: "New York · NYISO grid",
   isone: "New England · ISO-NE grid",
   pjm: "Mid-Atlantic / Midwest · PJM grid",
+  miso: "Midwest / South · MISO grid",
 };
 
 /** First-run screen: pick a utility before seeing the dashboard. */
