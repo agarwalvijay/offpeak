@@ -406,6 +406,41 @@ async function handleErcot(req, res, url) {
   }
 }
 
+// --- ISO-NE web services (HTTP Basic) → clean JSON ----------------------------
+
+const ISONE_BASE = "https://webservices.iso-ne.com/api/v1.1";
+const isoneCache = new Map();
+
+async function isoneGet(path) {
+  const auth = Buffer.from(
+    `${process.env.ISONE_USERNAME || ""}:${process.env.ISONE_PASSWORD || ""}`,
+  ).toString("base64");
+  const res = await fetch(`${ISONE_BASE}/${path}`, {
+    headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`isone ${res.status}: ${text.slice(0, 200)}`);
+  return JSON.parse(text);
+}
+
+async function handleIsone(req, res, url) {
+  const seg = url.pathname.replace(/^\/isone\//, "");
+  try {
+    // Discovery passthrough: /isone/raw?path=<url-encoded path>.
+    if (seg === "raw") {
+      const path = url.searchParams.get("path") ?? "";
+      const j = await isoneGet(path);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(j).slice(0, 4000));
+    }
+    res.writeHead(404);
+    res.end("not found");
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end(String(e && e.message ? e.message : e).slice(0, 400));
+  }
+}
+
 // --- NYISO public CSV → clean JSON --------------------------------------------
 
 const nyisoCache = new Map();
@@ -560,6 +595,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.url.startsWith("/nyiso/")) {
       return handleNyiso(req, res, new URL(req.url, "http://localhost"));
+    }
+    if (req.url.startsWith("/isone/")) {
+      return handleIsone(req, res, new URL(req.url, "http://localhost"));
     }
 
     const url = new URL(req.url, "http://localhost");

@@ -79,12 +79,18 @@ jobs:
           ERCOT_USERNAME: ${{ secrets.ERCOT_USERNAME }}
           ERCOT_PASSWORD: ${{ secrets.ERCOT_PASSWORD }}
           ERCOT_SUBSCRIPTION_KEY: ${{ secrets.ERCOT_SUBSCRIPTION_KEY }}
+          ISONE_USERNAME: ${{ secrets.ISONE_USERNAME }}
+          ISONE_PASSWORD: ${{ secrets.ISONE_PASSWORD }}
+          PJM_SUBSCRIPTION_KEY: ${{ secrets.PJM_SUBSCRIPTION_KEY }}
         run: |
           umask 077
           {
             printf 'ERCOT_USERNAME=%s\n' "$ERCOT_USERNAME"
             printf 'ERCOT_PASSWORD=%s\n' "$ERCOT_PASSWORD"
             printf 'ERCOT_SUBSCRIPTION_KEY=%s\n' "$ERCOT_SUBSCRIPTION_KEY"
+            printf 'ISONE_USERNAME=%s\n' "$ISONE_USERNAME"
+            printf 'ISONE_PASSWORD=%s\n' "$ISONE_PASSWORD"
+            printf 'PJM_SUBSCRIPTION_KEY=%s\n' "$PJM_SUBSCRIPTION_KEY"
           } > server.env
           PORT="${{ secrets.SSH_PORT }}"; PORT="${PORT:-22}"
           scp -i ~/.ssh/id_deploy -P "$PORT" -o StrictHostKeyChecking=yes \
