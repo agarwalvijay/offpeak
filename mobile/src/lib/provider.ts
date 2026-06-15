@@ -38,11 +38,11 @@ export type Utility = "comed" | "caiso" | "ercot" | "nyiso" | "isone" | "pjm";
 
 // PJM zones are pricing-node IDs (the API filters on pnode_id); keep the
 // human label alongside so the subtitle reads "PJM · ComEd", not the number.
+// IDs verified live against pnode_name (see deploy-time /pjm/raw checks).
 const PJM_ZONES: UtilityZone[] = [
   { id: "33092371", label: "ComEd" },
   { id: "1", label: "PJM-RTO (system)" },
   { id: "51288", label: "Western Hub" },
-  { id: "116013751", label: "AEP-Dayton Hub" },
   { id: "51297", label: "PECO" },
   { id: "51301", label: "PSEG" },
   { id: "51292", label: "BGE" },

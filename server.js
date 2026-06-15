@@ -658,13 +658,12 @@ const PJM_PNODES = new Set([
   "33092371", // ComEd
   "1", // PJM-RTO (system)
   "51288", // Western Hub
-  "116013751", // AEP-Dayton Hub
   "51297", // PECO
   "51301", // PSEG
   "51292", // BGE
   "51298", // Pepco
   "51299", // PPL
-  "34964545", // Dominion
+  "34964545", // Dominion (DOM)
 ]);
 const PJM_DEFAULT_PNODE = "33092371";
 
