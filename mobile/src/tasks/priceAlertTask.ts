@@ -95,7 +95,9 @@ export async function registerPriceAlertTask(): Promise<void> {
     const status = await BackgroundTask.getStatusAsync();
     if (status === BackgroundTask.BackgroundTaskStatus.Available) {
       await BackgroundTask.registerTaskAsync(PRICE_ALERT_TASK, {
-        minimumInterval: 15, // minutes; OS decides actual cadence
+        // Ask for 5 min; WorkManager floors periodic work at ~15 min, and the
+        // OS throttles further under doze/battery — so this is best-effort.
+        minimumInterval: 5,
       });
       registered = true;
     }
