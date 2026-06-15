@@ -29,13 +29,16 @@ export function App() {
     theme,
     alertPrefs,
     utility,
-    caisoZone,
+    zoneByUtility,
     onboarded,
     setTimePeriod,
     setDayAheadDay,
   } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
   const utilityMeta = UTILITIES[utility];
+  const zone = utilityMeta.zones
+    ? (zoneByUtility[utility] ?? utilityMeta.defaultZone)
+    : undefined;
 
   // Keep the native shell's background task in sync with alert config.
   useEffect(() => {
@@ -71,12 +74,7 @@ export function App() {
     error,
     lastUpdate,
     refetch,
-  } = usePricing({
-    utility,
-    zone: utility === "caiso" ? caisoZone : undefined,
-    autoRefresh,
-    dayAheadDay,
-  });
+  } = usePricing({ utility, zone, autoRefresh, dayAheadDay });
 
   const filtered = useMemo(
     () => filterByPeriod(fiveMinuteData, timePeriod),
@@ -124,7 +122,7 @@ export function App() {
           </div>
           <div className="header__title">
             <b>OffPeak</b>
-            <span>{utilityMeta.subtitle(caisoZone)}</span>
+            <span>{utilityMeta.subtitle(zone)}</span>
           </div>
         </div>
         {lastUpdate && (

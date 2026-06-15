@@ -6,17 +6,26 @@ import { BoltIcon } from "./icons";
 const REGION: Record<Utility, string> = {
   comed: "Northern Illinois · Commonwealth Edison",
   caiso: "California · CAISO grid",
+  ercot: "Texas · ERCOT grid",
 };
 
 /** First-run screen: pick a utility before seeing the dashboard. */
 export function Onboarding() {
-  const { setUtility, setCaisoZone, setOnboarded } = useSettings();
+  const { setUtility, setZone, setOnboarded } = useSettings();
   const [sel, setSel] = useState<Utility>("comed");
-  const [zone, setZone] = useState("NP15");
+  const [selZone, setSelZone] = useState<string | undefined>(undefined);
+
+  const zones = UTILITIES[sel].zones;
+  const curZone = selZone ?? UTILITIES[sel].defaultZone;
+
+  function pick(u: Utility) {
+    setSel(u);
+    setSelZone(UTILITIES[u].defaultZone);
+  }
 
   function start() {
     setUtility(sel);
-    if (sel === "caiso") setCaisoZone(zone);
+    if (zones && curZone) setZone(sel, curZone);
     setOnboarded(true);
   }
 
@@ -41,7 +50,7 @@ export function Onboarding() {
             <button
               key={u}
               className={`onboard__opt ${sel === u ? "is-sel" : ""}`}
-              onClick={() => setSel(u)}
+              onClick={() => pick(u)}
             >
               <span className="onboard__opt-name">{UTILITIES[u].name}</span>
               <span className="onboard__opt-region">{REGION[u]}</span>
@@ -49,15 +58,15 @@ export function Onboarding() {
           ))}
         </div>
 
-        {sel === "caiso" && UTILITIES.caiso.zones && (
+        {zones && (
           <div className="onboard__zones">
             <div className="onboard__zlabel">Pricing zone</div>
             <div className="chips">
-              {UTILITIES.caiso.zones.map((z) => (
+              {zones.map((z) => (
                 <button
                   key={z.id}
-                  className={`chip ${zone === z.id ? "chip--active" : ""}`}
-                  onClick={() => setZone(z.id)}
+                  className={`chip ${curZone === z.id ? "chip--active" : ""}`}
+                  onClick={() => setSelZone(z.id)}
                 >
                   {z.label}
                 </button>

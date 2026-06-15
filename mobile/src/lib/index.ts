@@ -4,6 +4,7 @@
 
 export * from "./comedApi";
 export * from "./caisoApi";
+export * from "./ercotApi";
 export * from "./provider";
 export * from "./pricing";
 export * from "./priceAlerts";

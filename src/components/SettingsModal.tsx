@@ -23,14 +23,16 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     theme,
     alertPrefs,
     utility,
-    caisoZone,
+    zoneByUtility,
     setAlertSettings,
     setAutoRefresh,
     setTheme,
     setAlertPrefs,
     setUtility,
-    setCaisoZone,
+    setZone,
   } = useSettings();
+  const zones = UTILITIES[utility].zones;
+  const currentZone = zoneByUtility[utility] ?? UTILITIES[utility].defaultZone;
   const [vals, setVals] = useState({
     low: String(alertSettings.low),
     medium: String(alertSettings.medium),
@@ -93,15 +95,15 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
-        {utility === "caiso" && UTILITIES.caiso.zones && (
+        {zones && (
           <div className="field" style={{ marginTop: 8 }}>
             <label>Zone</label>
             <div className="chips">
-              {UTILITIES.caiso.zones.map((z) => (
+              {zones.map((z) => (
                 <button
                   key={z.id}
-                  className={`chip ${caisoZone === z.id ? "chip--active" : ""}`}
-                  onClick={() => setCaisoZone(z.id)}
+                  className={`chip ${currentZone === z.id ? "chip--active" : ""}`}
+                  onClick={() => setZone(utility, z.id)}
                 >
                   {z.label}
                 </button>

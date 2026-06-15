@@ -13,8 +13,13 @@ import {
   caisoDayAheadPricing,
   caisoFiveMinuteFeed,
 } from "./caisoApi";
+import {
+  ercotCurrentHourAverage,
+  ercotDayAheadPricing,
+  ercotFiveMinuteFeed,
+} from "./ercotApi";
 
-export type Utility = "comed" | "caiso";
+export type Utility = "comed" | "caiso" | "ercot";
 
 export interface UtilityZone {
   id: string;
@@ -52,9 +57,24 @@ export const UTILITIES: Record<Utility, UtilityMeta> = {
     ],
     defaultZone: "NP15",
   },
+  ercot: {
+    id: "ercot",
+    name: "ERCOT",
+    subtitle: (zone) =>
+      `ERCOT · ${(zone ?? "HB_HOUSTON").replace("HB_", "")} real-time pricing`,
+    source: "ERCOT Settlement Point Prices",
+    zones: [
+      { id: "HB_HOUSTON", label: "Houston" },
+      { id: "HB_NORTH", label: "North" },
+      { id: "HB_SOUTH", label: "South" },
+      { id: "HB_WEST", label: "West" },
+      { id: "HB_HUBAVG", label: "Hub Avg" },
+    ],
+    defaultZone: "HB_HOUSTON",
+  },
 };
 
-export const UTILITY_LIST: Utility[] = ["comed", "caiso"];
+export const UTILITY_LIST: Utility[] = ["comed", "caiso", "ercot"];
 
 export interface PricingClient {
   getFiveMinuteFeed: () => Promise<PricingPoint[]>;
@@ -70,6 +90,14 @@ export function pricingClient(utility: Utility, zone?: string): PricingClient {
       getFiveMinuteFeed: () => caisoFiveMinuteFeed(z),
       getCurrentHourAverage: () => caisoCurrentHourAverage(z),
       getDayAheadPricing: (date) => caisoDayAheadPricing(z, date),
+    };
+  }
+  if (utility === "ercot") {
+    const z = zone ?? UTILITIES.ercot.defaultZone ?? "HB_HOUSTON";
+    return {
+      getFiveMinuteFeed: () => ercotFiveMinuteFeed(z),
+      getCurrentHourAverage: () => ercotCurrentHourAverage(z),
+      getDayAheadPricing: (date) => ercotDayAheadPricing(z, date),
     };
   }
   return { getFiveMinuteFeed, getCurrentHourAverage, getDayAheadPricing };

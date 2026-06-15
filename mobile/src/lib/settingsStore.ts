@@ -25,7 +25,7 @@ export interface SettingsState {
   theme: Theme;
   alertPrefs: AlertPrefs;
   utility: Utility;
-  caisoZone: string;
+  zoneByUtility: Record<string, string>;
   onboarded: boolean;
   setAlertSettings: (s: AlertSettings) => void;
   setAutoRefresh: (v: boolean) => void;
@@ -34,7 +34,7 @@ export interface SettingsState {
   setTheme: (t: Theme) => void;
   setAlertPrefs: (p: AlertPrefs) => void;
   setUtility: (u: Utility) => void;
-  setCaisoZone: (z: string) => void;
+  setZone: (u: Utility, z: string) => void;
   setOnboarded: (v: boolean) => void;
 }
 
@@ -51,7 +51,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
         theme: "system",
         alertPrefs: DEFAULT_ALERT_PREFS,
         utility: "comed",
-        caisoZone: "NP15",
+        zoneByUtility: { caiso: "NP15", ercot: "HB_HOUSTON" },
         onboarded: false,
         setAlertSettings: (alertSettings) => set({ alertSettings }),
         setAutoRefresh: (autoRefresh) => set({ autoRefresh }),
@@ -60,7 +60,8 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
         setTheme: (theme) => set({ theme }),
         setAlertPrefs: (alertPrefs) => set({ alertPrefs }),
         setUtility: (utility) => set({ utility }),
-        setCaisoZone: (caisoZone) => set({ caisoZone }),
+        setZone: (u, z) =>
+          set((s) => ({ zoneByUtility: { ...s.zoneByUtility, [u]: z } })),
         setOnboarded: (onboarded) => set({ onboarded }),
       }),
       {
@@ -73,7 +74,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
           theme: s.theme,
           alertPrefs: s.alertPrefs,
           utility: s.utility,
-          caisoZone: s.caisoZone,
+          zoneByUtility: s.zoneByUtility,
           onboarded: s.onboarded,
         }),
       },
