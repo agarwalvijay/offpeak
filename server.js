@@ -743,15 +743,15 @@ async function handlePjm(req, res, url) {
       else {
         const now = new Date();
         const from = new Date(now.getTime() - 24 * 3600_000);
-        const items = await pjmGet("rt_fivemin_hrl_lmps", {
+        // Unverified feed = near-real-time (latest interval ≈ now); the
+        // "verified" rt_fivemin_hrl_lmps lags ~a day, so it's wrong for a
+        // live price. Unverified isn't versioned (no row_is_current).
+        const items = await pjmGet("rt_unverified_fivemin_lmps", {
           rowCount: 50000,
           startRow: 1,
           datetime_beginning_ept: `${eptFilter(from)} to ${eptFilter(now)}`,
           pnode_id: pnode,
-          row_is_current: "true",
-          fields: "datetime_beginning_utc;total_lmp_rt",
-          sort: "datetime_beginning_utc",
-          order: "Asc",
+          fields: "datetime_beginning_utc,total_lmp_rt",
         });
         data = parsePjmRt(items);
         pjmCache.set(key, { at: Date.now(), data });
@@ -780,7 +780,7 @@ async function handlePjm(req, res, url) {
           datetime_beginning_ept: `${mm}-${dd}-${yyyy} 00:00 to ${mm}-${dd}-${yyyy} 23:59`,
           pnode_id: pnode,
           row_is_current: "true",
-          fields: "datetime_beginning_ept;total_lmp_da",
+          fields: "datetime_beginning_ept,total_lmp_da",
         });
         data = parsePjmDam(items);
         pjmCache.set(key, { at: Date.now(), data });
@@ -804,9 +804,11 @@ async function handlePjm(req, res, url) {
       } catch {
         j = text;
       }
-      if (j && Array.isArray(j.items)) j.items = j.items.slice(0, 5);
+      // Drop the bulky feed schema so items/errors aren't truncated away.
+      if (j && typeof j === "object") delete j.feedMetadata;
+      if (j && Array.isArray(j.items)) j.items = j.items.slice(0, 30);
       res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify(j).slice(0, 6000));
+      return res.end(JSON.stringify(j).slice(0, 12000));
     }
     res.writeHead(404);
     res.end("not found");
