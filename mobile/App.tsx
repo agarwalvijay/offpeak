@@ -103,18 +103,13 @@ function SplashOverlay({ visible }: { visible: boolean }) {
             <PulseRing delay={0} />
             <PulseRing delay={733} />
             <PulseRing delay={1466} />
-            <LinearGradient
-              colors={["#3b82f6", "#1e3a8a"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.mark}
-            >
+            <View style={styles.markGlow}>
               <Image
-                source={require("./assets/splash-icon.png")}
-                style={{ width: 64, height: 64 }}
-                resizeMode="contain"
+                source={require("./assets/icon.png")}
+                style={styles.mark}
+                resizeMode="cover"
               />
-            </LinearGradient>
+            </View>
           </View>
           <Text style={styles.wordmark}>OffPeak</Text>
           <View style={styles.accent} />
@@ -155,8 +150,8 @@ export default function App() {
 
   // Keep the splash up for a minimum beat, and never longer than ~5s.
   useEffect(() => {
-    const min = setTimeout(() => setMinPassed(true), 1100);
-    const max = setTimeout(() => setWebLoaded(true), 5000);
+    const min = setTimeout(() => setMinPassed(true), 1800);
+    const max = setTimeout(() => setWebLoaded(true), 6000);
     return () => {
       clearTimeout(min);
       clearTimeout(max);
@@ -255,18 +250,15 @@ const styles = StyleSheet.create({
   // Splash
   splashCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
   markBox: { width: 120, height: 120, alignItems: "center", justifyContent: "center" },
-  mark: {
-    width: 116,
-    height: 116,
+  markGlow: {
     borderRadius: 58,
-    alignItems: "center",
-    justifyContent: "center",
     shadowColor: "#3b82f6",
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.55,
     shadowRadius: 26,
     shadowOffset: { width: 0, height: 0 },
     elevation: 16,
   },
+  mark: { width: 116, height: 116, borderRadius: 58 },
   wordmark: {
     color: "#fff",
     fontSize: 32,
