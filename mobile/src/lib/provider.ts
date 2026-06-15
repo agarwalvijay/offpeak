@@ -18,8 +18,13 @@ import {
   ercotDayAheadPricing,
   ercotFiveMinuteFeed,
 } from "./ercotApi";
+import {
+  nyisoCurrentHourAverage,
+  nyisoDayAheadPricing,
+  nyisoFiveMinuteFeed,
+} from "./nyisoApi";
 
-export type Utility = "comed" | "caiso" | "ercot";
+export type Utility = "comed" | "caiso" | "ercot" | "nyiso";
 
 export interface UtilityZone {
   id: string;
@@ -72,9 +77,29 @@ export const UTILITIES: Record<Utility, UtilityMeta> = {
     ],
     defaultZone: "HB_HOUSTON",
   },
+  nyiso: {
+    id: "nyiso",
+    name: "NYISO",
+    subtitle: (zone) => `NYISO · ${zone ?? "N.Y.C."} real-time pricing`,
+    source: "NYISO Zonal LBMP",
+    zones: [
+      { id: "N.Y.C.", label: "New York City" },
+      { id: "LONGIL", label: "Long Island" },
+      { id: "HUD VL", label: "Hudson Valley" },
+      { id: "MILLWD", label: "Millwood" },
+      { id: "DUNWOD", label: "Dunwoodie" },
+      { id: "CAPITL", label: "Capital" },
+      { id: "CENTRL", label: "Central" },
+      { id: "WEST", label: "West" },
+      { id: "GENESE", label: "Genesee" },
+      { id: "MHK VL", label: "Mohawk Valley" },
+      { id: "NORTH", label: "North" },
+    ],
+    defaultZone: "N.Y.C.",
+  },
 };
 
-export const UTILITY_LIST: Utility[] = ["comed", "caiso", "ercot"];
+export const UTILITY_LIST: Utility[] = ["comed", "caiso", "ercot", "nyiso"];
 
 export interface PricingClient {
   getFiveMinuteFeed: () => Promise<PricingPoint[]>;
@@ -98,6 +123,14 @@ export function pricingClient(utility: Utility, zone?: string): PricingClient {
       getFiveMinuteFeed: () => ercotFiveMinuteFeed(z),
       getCurrentHourAverage: () => ercotCurrentHourAverage(z),
       getDayAheadPricing: (date) => ercotDayAheadPricing(z, date),
+    };
+  }
+  if (utility === "nyiso") {
+    const z = zone ?? UTILITIES.nyiso.defaultZone ?? "N.Y.C.";
+    return {
+      getFiveMinuteFeed: () => nyisoFiveMinuteFeed(z),
+      getCurrentHourAverage: () => nyisoCurrentHourAverage(z),
+      getDayAheadPricing: (date) => nyisoDayAheadPricing(z, date),
     };
   }
   return { getFiveMinuteFeed, getCurrentHourAverage, getDayAheadPricing };

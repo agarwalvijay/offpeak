@@ -406,6 +406,147 @@ async function handleErcot(req, res, url) {
   }
 }
 
+// --- NYISO public CSV → clean JSON --------------------------------------------
+
+const nyisoCache = new Map();
+const NYISO_ZONES = [
+  "N.Y.C.", "LONGIL", "WEST", "CAPITL", "CENTRL",
+  "HUD VL", "MILLWD", "DUNWOD", "GENESE", "MHK VL", "NORTH",
+];
+
+function nyisoZone(url) {
+  const z = url.searchParams.get("zone") || "N.Y.C.";
+  return NYISO_ZONES.includes(z) ? z : "N.Y.C.";
+}
+
+/** UTC ms for a wall-clock time in an IANA timezone (handles DST). */
+function wallToUtcMs(y, mo, d, h, mi, tz) {
+  const guess = Date.UTC(y, mo - 1, d, h, mi);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(guess));
+  const g = (t) => +parts.find((p) => p.type === t).value;
+  const wall = Date.UTC(g("year"), g("month") - 1, g("day"), g("hour") % 24, g("minute"));
+  return guess - (wall - guess);
+}
+
+/** YYYYMMDD for a Date in US Eastern (NYISO files are Eastern). */
+function easternYmd(d) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(d)
+    .replace(/-/g, "");
+}
+
+async function fetchText(url) {
+  const r = await fetch(url, { headers: { "User-Agent": "OffPeak/1.0" } });
+  if (!r.ok) throw new Error(`nyiso ${r.status}`);
+  return r.text();
+}
+
+function csvRow(line) {
+  return line.split(",").map((s) => s.trim().replace(/^"|"$/g, ""));
+}
+
+/** RT zonal LBMP CSV ("MM/DD/YYYY HH:MM:SS",Name,PTID,LBMP,...) → [{millisUTC,price}]. */
+function parseNyisoRt(csv, zone) {
+  const out = [];
+  const lines = csv.split("\n");
+  for (let k = 1; k < lines.length; k++) {
+    const line = lines[k].trim();
+    if (!line) continue;
+    const f = csvRow(line);
+    if (f[1] !== zone) continue;
+    const m = f[0].match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/);
+    const price = parseFloat(f[3]);
+    if (!m || Number.isNaN(price)) continue;
+    const ms = wallToUtcMs(+m[3], +m[1], +m[2], +m[4], +m[5], "America/New_York");
+    out.push({ millisUTC: ms, price: Number((price / 10).toFixed(2)) });
+  }
+  return out.sort((a, b) => a.millisUTC - b.millisUTC);
+}
+
+/** DAM zonal LBMP CSV ("MM/DD/YYYY HH:MM",Name,PTID,LBMP,...) → [{hour,price}]. */
+function parseNyisoDam(csv, zone) {
+  const out = [];
+  const lines = csv.split("\n");
+  for (let k = 1; k < lines.length; k++) {
+    const line = lines[k].trim();
+    if (!line) continue;
+    const f = csvRow(line);
+    if (f[1] !== zone) continue;
+    const m = f[0].match(/ (\d{2}):(\d{2})/);
+    const price = parseFloat(f[3]);
+    if (!m || Number.isNaN(price)) continue;
+    out.push({ hour: +m[1] % 24, price: Number((price / 10).toFixed(2)) });
+  }
+  return out.sort((a, b) => a.hour - b.hour);
+}
+
+async function handleNyiso(req, res, url) {
+  const seg = url.pathname.replace(/^\/nyiso\//, "");
+  try {
+    if (seg === "rt") {
+      const zone = nyisoZone(url);
+      const key = `rt:${zone}`;
+      const c = nyisoCache.get(key);
+      let data;
+      if (c && Date.now() - c.at < 60_000) data = c.data;
+      else {
+        const today = easternYmd(new Date());
+        const yest = easternYmd(new Date(Date.now() - 24 * 3600_000));
+        const base = "http://mis.nyiso.com/public/csv/realtime";
+        const [a, b] = await Promise.all([
+          fetchText(`${base}/${yest}realtime_zone.csv`).catch(() => ""),
+          fetchText(`${base}/${today}realtime_zone.csv`),
+        ]);
+        data = [...parseNyisoRt(a, zone), ...parseNyisoRt(b, zone)].sort(
+          (x, y) => x.millisUTC - y.millisUTC,
+        );
+        nyisoCache.set(key, { at: Date.now(), data });
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(data));
+    }
+    if (seg === "dam") {
+      const zone = nyisoZone(url);
+      const ymd = (url.searchParams.get("date") || "").replace(/[^0-9]/g, "");
+      if (!/^\d{8}$/.test(ymd)) {
+        res.writeHead(400);
+        return res.end("bad date");
+      }
+      const key = `dam:${zone}:${ymd}`;
+      const c = nyisoCache.get(key);
+      let data;
+      if (c && Date.now() - c.at < 1800_000) data = c.data;
+      else {
+        const csv = await fetchText(
+          `http://mis.nyiso.com/public/csv/damlbmp/${ymd}damlbmp_zone.csv`,
+        );
+        data = parseNyisoDam(csv, zone);
+        nyisoCache.set(key, { at: Date.now(), data });
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(data));
+    }
+    res.writeHead(404);
+    res.end("not found");
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end(String(e && e.message ? e.message : e).slice(0, 300));
+  }
+}
+
 const server = createServer(async (req, res) => {
   try {
     if (req.url.startsWith("/comed/") || req.url === "/comed") {
@@ -416,6 +557,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.url.startsWith("/ercot/")) {
       return handleErcot(req, res, new URL(req.url, "http://localhost"));
+    }
+    if (req.url.startsWith("/nyiso/")) {
+      return handleNyiso(req, res, new URL(req.url, "http://localhost"));
     }
 
     const url = new URL(req.url, "http://localhost");

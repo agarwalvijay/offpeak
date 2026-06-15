@@ -51,7 +51,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
         theme: "system",
         alertPrefs: DEFAULT_ALERT_PREFS,
         utility: "comed",
-        zoneByUtility: { caiso: "NP15", ercot: "HB_HOUSTON" },
+        zoneByUtility: { caiso: "NP15", ercot: "HB_HOUSTON", nyiso: "N.Y.C." },
         onboarded: false,
         setAlertSettings: (alertSettings) => set({ alertSettings }),
         setAutoRefresh: (autoRefresh) => set({ autoRefresh }),
