@@ -14,7 +14,7 @@ export interface AlertPrefs {
 }
 
 export const DEFAULT_ALERT_PREFS: AlertPrefs = {
-  enabled: false,
+  enabled: true,
   high: true,
   cheap: true,
   negative: true,

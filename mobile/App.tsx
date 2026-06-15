@@ -163,7 +163,12 @@ export default function App() {
       const msg = JSON.parse(e.nativeEvent.data);
       if (msg.type === "alertConfig") {
         await storeAlertConfig({ thresholds: msg.thresholds, prefs: msg.prefs });
-        if (msg.prefs?.enabled) await registerPriceAlertTask();
+        if (msg.prefs?.enabled) {
+          // Alerts are on by default — make sure we have permission + the task
+          // registered (requestPermissions is a no-op once already decided).
+          await requestNotificationPermission();
+          await registerPriceAlertTask();
+        }
       } else if (msg.type === "requestNotifPermission") {
         await requestNotificationPermission();
         await registerPriceAlertTask();
