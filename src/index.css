@@ -374,6 +374,19 @@ body {
 .chart-label {
   fill: var(--chart-label);
 }
+.chart-crosshair {
+  stroke: var(--text-faint);
+}
+.chart-tip-bg {
+  fill: var(--bg-elev-2);
+  stroke: var(--border);
+}
+.chart-tip-text {
+  fill: var(--text);
+}
+.chart-tip-dim {
+  fill: var(--text-dim);
+}
 .chart-empty {
   position: absolute;
   inset: 0;
