@@ -30,7 +30,7 @@ export function App() {
     dayAheadDay,
     theme,
     alertPrefs,
-    utility,
+    utility: storedUtility,
     zoneByUtility,
     onboarded,
     setTimePeriod,
@@ -39,12 +39,16 @@ export function App() {
   } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
 
-  // A previously-selected market may no longer be offered (markets config
-  // changed). Fall back to the first enabled one so the UI never shows or
-  // queries a hidden market.
+  // A persisted selection may no longer be an offered market (markets config
+  // changed since the user last picked). Resolve the effective market
+  // synchronously so we never render or query a hidden one, then persist the
+  // correction so the stored value catches up.
+  const utility = isUtilityEnabled(storedUtility)
+    ? storedUtility
+    : getEnabledUtilities()[0];
   useEffect(() => {
-    if (!isUtilityEnabled(utility)) setUtility(getEnabledUtilities()[0]);
-  }, [utility, setUtility]);
+    if (storedUtility !== utility) setUtility(utility);
+  }, [storedUtility, utility, setUtility]);
 
   const utilityMeta = UTILITIES[utility];
   const zone = utilityMeta.zones

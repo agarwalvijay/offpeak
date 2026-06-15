@@ -26,6 +26,22 @@ try {
   // no .env — fine in dev
 }
 
+// Which markets this deployment serves. OFFPEAK_MARKETS (a comma-separated id
+// list from the GitHub repo variable, written into .env by the deploy) is the
+// server-side source of truth — the client UI hides disabled markets, but the
+// server must also refuse their data endpoints so a stale/crafted request can't
+// reach a disabled provider. Unset / all-invalid → every market (fail-open, to
+// match the client). Must stay in sync with mobile/src/lib/provider.ts ids.
+const ALL_MARKETS = ["comed", "caiso", "ercot", "nyiso", "isone", "pjm"];
+const enabledMarkets = (() => {
+  const ids = (process.env.OFFPEAK_MARKETS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => ALL_MARKETS.includes(s));
+  return new Set(ids.length ? ids : ALL_MARKETS);
+})();
+const marketEnabled = (id) => enabledMarkets.has(id);
+
 // ERCOT public API: OAuth (ROPC) id_token + subscription key, both required.
 const ERCOT_TOKEN_URL =
   "https://ercotb2c.b2clogin.com/ercotb2c.onmicrosoft.com/B2C_1_PUBAPI-ROPC-FLOW/oauth2/v2.0/token";
@@ -819,6 +835,13 @@ async function handlePjm(req, res, url) {
 
 const server = createServer(async (req, res) => {
   try {
+    // Market data endpoints, each gated on the enabled-markets allowlist:
+    // a disabled provider returns 404 (its UI is hidden, but enforce here too).
+    const market = (req.url.match(/^\/(comed|caiso|ercot|nyiso|isone|pjm)(?:\/|$)/) || [])[1];
+    if (market && !marketEnabled(market)) {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      return res.end("Market not enabled");
+    }
     if (req.url.startsWith("/comed/") || req.url === "/comed") {
       return proxyComed(req, res);
     }

@@ -87,6 +87,7 @@ jobs:
           ISONE_USERNAME: ${{ secrets.ISONE_USERNAME }}
           ISONE_PASSWORD: ${{ secrets.ISONE_PASSWORD }}
           PJM_SUBSCRIPTION_KEY: ${{ secrets.PJM_SUBSCRIPTION_KEY }}
+          OFFPEAK_MARKETS: ${{ vars.OFFPEAK_MARKETS }}
         run: |
           umask 077
           {
@@ -96,6 +97,7 @@ jobs:
             printf 'ISONE_USERNAME=%s\n' "$ISONE_USERNAME"
             printf 'ISONE_PASSWORD=%s\n' "$ISONE_PASSWORD"
             printf 'PJM_SUBSCRIPTION_KEY=%s\n' "$PJM_SUBSCRIPTION_KEY"
+            printf 'OFFPEAK_MARKETS=%s\n' "$OFFPEAK_MARKETS"
           } > server.env
           PORT="${{ secrets.SSH_PORT }}"; PORT="${PORT:-22}"
           scp -i ~/.ssh/id_deploy -P "$PORT" -o StrictHostKeyChecking=yes \
