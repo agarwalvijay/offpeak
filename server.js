@@ -646,6 +646,176 @@ async function handleNyiso(req, res, url) {
   }
 }
 
+// --- PJM Data Miner 2 (subscription key) → clean JSON -------------------------
+
+const PJM_BASE = "https://api.pjm.com/api/v1";
+const pjmCache = new Map();
+
+// Pricing-node IDs (RT five-min disallows zone/type filters by data volume, so
+// we must query by pnode_id — same IDs work for DA hourly). Default = ComEd, the
+// app's heritage zone. Mirror this set in mobile/src/lib/provider.ts.
+const PJM_PNODES = new Set([
+  "33092371", // ComEd
+  "1", // PJM-RTO (system)
+  "51288", // Western Hub
+  "116013751", // AEP-Dayton Hub
+  "51297", // PECO
+  "51301", // PSEG
+  "51292", // BGE
+  "51298", // Pepco
+  "51299", // PPL
+  "34964545", // Dominion
+]);
+const PJM_DEFAULT_PNODE = "33092371";
+
+function pjmPnode(url) {
+  const z = url.searchParams.get("zone") || PJM_DEFAULT_PNODE;
+  return PJM_PNODES.has(z) ? z : PJM_DEFAULT_PNODE;
+}
+
+/** GET a Data Miner feed → its `items` array (subscription key in header). */
+async function pjmGet(feed, params) {
+  const qs = Object.entries(params)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .join("&");
+  const r = await fetch(`${PJM_BASE}/${feed}?${qs}`, {
+    headers: {
+      "Ocp-Apim-Subscription-Key": process.env.PJM_SUBSCRIPTION_KEY || "",
+      Accept: "application/json",
+    },
+  });
+  const text = await r.text();
+  if (!r.ok) throw new Error(`pjm ${r.status}: ${text.slice(0, 200)}`);
+  const json = JSON.parse(text);
+  return Array.isArray(json) ? json : json.items || [];
+}
+
+/** Eastern Prevailing Time filter string "MM-DD-YYYY HH:MM" for a Date. */
+function eptFilter(d) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const g = (t) => parts.find((p) => p.type === t).value;
+  const h = g("hour") === "24" ? "00" : g("hour");
+  return `${g("month")}-${g("day")}-${g("year")} ${h}:${g("minute")}`;
+}
+
+/** RT 5-min total LMP → [{ millisUTC, price¢/kWh }]. utc field is zone-less. */
+function parsePjmRt(items) {
+  return items
+    .map((r) => {
+      const t = String(r.datetime_beginning_utc || "");
+      return {
+        millisUTC: Date.parse(/[zZ]$/.test(t) ? t : `${t}Z`),
+        price: Number((Number(r.total_lmp_rt) / 10).toFixed(2)),
+      };
+    })
+    .filter((p) => !Number.isNaN(p.millisUTC))
+    .sort((a, b) => a.millisUTC - b.millisUTC);
+}
+
+/** DA hourly total LMP → [{ hour, price¢/kWh }] (hour from the EPT timestamp). */
+function parsePjmDam(items) {
+  return items
+    .map((r) => ({
+      hour: parseInt(String(r.datetime_beginning_ept).slice(11, 13), 10),
+      price: Number((Number(r.total_lmp_da) / 10).toFixed(2)),
+    }))
+    .filter((x) => !Number.isNaN(x.hour))
+    .sort((a, b) => a.hour - b.hour);
+}
+
+async function handlePjm(req, res, url) {
+  const seg = url.pathname.replace(/^\/pjm\//, "");
+  try {
+    if (seg === "rt") {
+      const pnode = pjmPnode(url);
+      const key = `rt:${pnode}`;
+      const c = pjmCache.get(key);
+      let data;
+      if (c && Date.now() - c.at < 60_000) data = c.data;
+      else {
+        const now = new Date();
+        const from = new Date(now.getTime() - 24 * 3600_000);
+        const items = await pjmGet("rt_fivemin_hrl_lmps", {
+          rowCount: 50000,
+          startRow: 1,
+          datetime_beginning_ept: `${eptFilter(from)} to ${eptFilter(now)}`,
+          pnode_id: pnode,
+          row_is_current: "true",
+          fields: "datetime_beginning_utc;total_lmp_rt",
+          sort: "datetime_beginning_utc",
+          order: "Asc",
+        });
+        data = parsePjmRt(items);
+        pjmCache.set(key, { at: Date.now(), data });
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(data));
+    }
+    if (seg === "dam") {
+      const pnode = pjmPnode(url);
+      const ymd = (url.searchParams.get("date") || "").replace(/[^0-9]/g, "");
+      if (!/^\d{8}$/.test(ymd)) {
+        res.writeHead(400);
+        return res.end("bad date");
+      }
+      const yyyy = ymd.slice(0, 4);
+      const mm = ymd.slice(4, 6);
+      const dd = ymd.slice(6, 8);
+      const key = `dam:${pnode}:${ymd}`;
+      const c = pjmCache.get(key);
+      let data;
+      if (c && Date.now() - c.at < 1800_000) data = c.data;
+      else {
+        const items = await pjmGet("da_hrl_lmps", {
+          rowCount: 100,
+          startRow: 1,
+          datetime_beginning_ept: `${mm}-${dd}-${yyyy} 00:00 to ${mm}-${dd}-${yyyy} 23:59`,
+          pnode_id: pnode,
+          row_is_current: "true",
+          fields: "datetime_beginning_ept;total_lmp_da",
+        });
+        data = parsePjmDam(items);
+        pjmCache.set(key, { at: Date.now(), data });
+      }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      return res.end(JSON.stringify(data));
+    }
+    // Discovery passthrough: /pjm/raw?path=<url-encoded feed + query>.
+    if (seg === "raw") {
+      const path = url.searchParams.get("path") ?? "";
+      const r = await fetch(`${PJM_BASE}/${path}`, {
+        headers: {
+          "Ocp-Apim-Subscription-Key": process.env.PJM_SUBSCRIPTION_KEY || "",
+          Accept: "application/json",
+        },
+      });
+      const text = await r.text();
+      let j;
+      try {
+        j = JSON.parse(text);
+      } catch {
+        j = text;
+      }
+      if (j && Array.isArray(j.items)) j.items = j.items.slice(0, 5);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(j).slice(0, 6000));
+    }
+    res.writeHead(404);
+    res.end("not found");
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end(String(e && e.message ? e.message : e).slice(0, 400));
+  }
+}
+
 const server = createServer(async (req, res) => {
   try {
     if (req.url.startsWith("/comed/") || req.url === "/comed") {
@@ -662,6 +832,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.url.startsWith("/isone/")) {
       return handleIsone(req, res, new URL(req.url, "http://localhost"));
+    }
+    if (req.url.startsWith("/pjm/")) {
+      return handlePjm(req, res, new URL(req.url, "http://localhost"));
     }
 
     const url = new URL(req.url, "http://localhost");

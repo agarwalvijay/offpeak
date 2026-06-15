@@ -28,8 +28,30 @@ import {
   isoneDayAheadPricing,
   isoneFiveMinuteFeed,
 } from "./isoneApi";
+import {
+  pjmCurrentHourAverage,
+  pjmDayAheadPricing,
+  pjmFiveMinuteFeed,
+} from "./pjmApi";
 
-export type Utility = "comed" | "caiso" | "ercot" | "nyiso" | "isone";
+export type Utility = "comed" | "caiso" | "ercot" | "nyiso" | "isone" | "pjm";
+
+// PJM zones are pricing-node IDs (the API filters on pnode_id); keep the
+// human label alongside so the subtitle reads "PJM · ComEd", not the number.
+const PJM_ZONES: UtilityZone[] = [
+  { id: "33092371", label: "ComEd" },
+  { id: "1", label: "PJM-RTO (system)" },
+  { id: "51288", label: "Western Hub" },
+  { id: "116013751", label: "AEP-Dayton Hub" },
+  { id: "51297", label: "PECO" },
+  { id: "51301", label: "PSEG" },
+  { id: "51292", label: "BGE" },
+  { id: "51298", label: "Pepco" },
+  { id: "51299", label: "PPL" },
+  { id: "34964545", label: "Dominion" },
+];
+const pjmLabel = (id?: string) =>
+  PJM_ZONES.find((z) => z.id === id)?.label ?? "ComEd";
 
 export interface UtilityZone {
   id: string;
@@ -120,9 +142,24 @@ export const UTILITIES: Record<Utility, UtilityMeta> = {
     ],
     defaultZone: "4000",
   },
+  pjm: {
+    id: "pjm",
+    name: "PJM",
+    subtitle: (zone) => `PJM · ${pjmLabel(zone)} real-time pricing`,
+    source: "PJM Data Miner (LMP)",
+    zones: PJM_ZONES,
+    defaultZone: "33092371",
+  },
 };
 
-export const UTILITY_LIST: Utility[] = ["comed", "caiso", "ercot", "nyiso", "isone"];
+export const UTILITY_LIST: Utility[] = [
+  "comed",
+  "caiso",
+  "ercot",
+  "nyiso",
+  "isone",
+  "pjm",
+];
 
 export interface PricingClient {
   getFiveMinuteFeed: () => Promise<PricingPoint[]>;
@@ -162,6 +199,14 @@ export function pricingClient(utility: Utility, zone?: string): PricingClient {
       getFiveMinuteFeed: () => isoneFiveMinuteFeed(z),
       getCurrentHourAverage: () => isoneCurrentHourAverage(z),
       getDayAheadPricing: (date) => isoneDayAheadPricing(z, date),
+    };
+  }
+  if (utility === "pjm") {
+    const z = zone ?? UTILITIES.pjm.defaultZone ?? "33092371";
+    return {
+      getFiveMinuteFeed: () => pjmFiveMinuteFeed(z),
+      getCurrentHourAverage: () => pjmCurrentHourAverage(z),
+      getDayAheadPricing: (date) => pjmDayAheadPricing(z, date),
     };
   }
   return { getFiveMinuteFeed, getCurrentHourAverage, getDayAheadPricing };

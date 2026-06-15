@@ -7,6 +7,7 @@ export * from "./caisoApi";
 export * from "./ercotApi";
 export * from "./nyisoApi";
 export * from "./isoneApi";
+export * from "./pjmApi";
 export * from "./provider";
 export * from "./pricing";
 export * from "./priceAlerts";

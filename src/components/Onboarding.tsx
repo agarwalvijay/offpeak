@@ -9,6 +9,7 @@ const REGION: Record<Utility, string> = {
   ercot: "Texas · ERCOT grid",
   nyiso: "New York · NYISO grid",
   isone: "New England · ISO-NE grid",
+  pjm: "Mid-Atlantic / Midwest · PJM grid",
 };
 
 /** First-run screen: pick a utility before seeing the dashboard. */

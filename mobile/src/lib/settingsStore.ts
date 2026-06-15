@@ -56,6 +56,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
           ercot: "HB_HOUSTON",
           nyiso: "N.Y.C.",
           isone: "4000",
+          pjm: "33092371",
         },
         onboarded: false,
         setAlertSettings: (alertSettings) => set({ alertSettings }),
