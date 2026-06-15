@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { UTILITIES, UTILITY_LIST } from "@/lib";
 import { useSettings } from "../store";
 import { requestNotifPermission } from "../native-bridge";
 import { CloseIcon } from "./icons";
@@ -21,10 +22,14 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     autoRefresh,
     theme,
     alertPrefs,
+    utility,
+    caisoZone,
     setAlertSettings,
     setAutoRefresh,
     setTheme,
     setAlertPrefs,
+    setUtility,
+    setCaisoZone,
   } = useSettings();
   const [vals, setVals] = useState({
     low: String(alertSettings.low),
@@ -70,6 +75,44 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
+        <div className="section-label">Utility</div>
+        <div className="switch-row">
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Provider</div>
+            <div className="meta">Which grid's real-time prices to show</div>
+          </div>
+          <div className="segmented">
+            {UTILITY_LIST.map((u) => (
+              <button
+                key={u}
+                className={utility === u ? "is-on" : ""}
+                onClick={() => setUtility(u)}
+              >
+                {UTILITIES[u].name}
+              </button>
+            ))}
+          </div>
+        </div>
+        {utility === "caiso" && UTILITIES.caiso.zones && (
+          <div className="field" style={{ marginTop: 8 }}>
+            <label>Zone</label>
+            <div className="chips">
+              {UTILITIES.caiso.zones.map((z) => (
+                <button
+                  key={z.id}
+                  className={`chip ${caisoZone === z.id ? "chip--active" : ""}`}
+                  onClick={() => setCaisoZone(z.id)}
+                >
+                  {z.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="section-label" style={{ marginTop: 18 }}>
+          Data
+        </div>
         <div className="switch-row">
           <div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>Auto-refresh</div>

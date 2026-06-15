@@ -4,6 +4,7 @@
 // ecosystem.config.cjs); put nginx in front and proxy the domain to PORT.
 import { createServer } from "node:http";
 import { request as httpsRequest } from "node:https";
+import { inflateRawSync } from "node:zlib";
 import { stat, readFile } from "node:fs/promises";
 import { join, normalize, extname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +13,17 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const DIST = join(__dirname, "dist");
 const PORT = process.env.PORT || 8127;
 const COMED_HOST = "hourlypricing.comed.com";
+
+// CAISO OASIS: trading-hub nodes by short zone code, and a small in-memory
+// cache so we hit OASIS at most once per TTL per zone (it rate-limits hard).
+const CAISO_HOST = "oasis.caiso.com";
+const CAISO_TZ = "America/Los_Angeles";
+const CAISO_ZONES = {
+  NP15: "TH_NP15_GEN-APND",
+  SP15: "TH_SP15_GEN-APND",
+  ZP26: "TH_ZP26_GEN-APND",
+};
+const caisoCache = new Map(); // key -> { at, body }
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -70,10 +82,148 @@ function proxyComed(req, res) {
   upstream.end();
 }
 
+// --- CAISO OASIS → clean JSON -------------------------------------------------
+
+/** GET a binary body from a host (returns a Buffer). */
+function fetchBuffer(host, path) {
+  return new Promise((resolve, reject) => {
+    const r = httpsRequest(
+      { host, path, method: "GET", headers: { "User-Agent": "OffPeak/1.0" } },
+      (up) => {
+        if (up.statusCode !== 200) {
+          up.resume();
+          return reject(new Error(`upstream ${up.statusCode}`));
+        }
+        const chunks = [];
+        up.on("data", (c) => chunks.push(c));
+        up.on("end", () => resolve(Buffer.concat(chunks)));
+      },
+    );
+    r.on("error", reject);
+    r.setTimeout(20000, () => r.destroy(new Error("timeout")));
+    r.end();
+  });
+}
+
+/** Extract the single file from an OASIS zip (zero-dep). */
+function unzipSingle(buf) {
+  if (buf.readUInt32LE(0) !== 0x04034b50) throw new Error("not a zip");
+  const flags = buf.readUInt16LE(6);
+  const method = buf.readUInt16LE(8);
+  let compSize = buf.readUInt32LE(18);
+  const nameLen = buf.readUInt16LE(26);
+  const extraLen = buf.readUInt16LE(28);
+  const dataStart = 30 + nameLen + extraLen;
+  if (compSize === 0 || flags & 0x08) {
+    const cen = buf.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    compSize = buf.readUInt32LE(cen + 20);
+  }
+  const comp = buf.subarray(dataStart, dataStart + compSize);
+  return method === 0 ? comp : inflateRawSync(comp);
+}
+
+function fmtGmt(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}-0000`;
+}
+
+/** RT 5-min LMP_PRC → [{ millisUTC, price¢/kWh }] (mirrors ComEd's feed shape). */
+function parseRt(xml) {
+  const out = [];
+  for (const b of xml.split("<REPORT_DATA>")) {
+    if (!b.includes("<DATA_ITEM>LMP_PRC</DATA_ITEM>")) continue;
+    const t = b.match(/<INTERVAL_START_GMT>([^<]+)</);
+    const v = b.match(/<VALUE>([^<]+)</);
+    if (!t || !v) continue;
+    out.push({
+      millisUTC: new Date(t[1]).getTime(),
+      price: Number((parseFloat(v[1]) / 10).toFixed(2)),
+    });
+  }
+  return out.sort((a, b) => a.millisUTC - b.millisUTC);
+}
+
+/** Pacific {ymd,hour} for a Date. */
+function pacific(d) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: CAISO_TZ,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+  }).formatToParts(d);
+  const g = (t) => parts.find((p) => p.type === t).value;
+  return { ymd: `${g("year")}${g("month")}${g("day")}`, hour: parseInt(g("hour"), 10) % 24 };
+}
+
+/** DAM hourly LMP_PRC for one Pacific date → [{ hour, price¢/kWh }]. */
+function parseDam(xml, ymd) {
+  const out = [];
+  for (const b of xml.split("<REPORT_DATA>")) {
+    if (!b.includes("<DATA_ITEM>LMP_PRC</DATA_ITEM>")) continue;
+    const t = b.match(/<INTERVAL_START_GMT>([^<]+)</);
+    const v = b.match(/<VALUE>([^<]+)</);
+    if (!t || !v) continue;
+    const pac = pacific(new Date(t[1]));
+    if (pac.ymd !== ymd) continue;
+    out.push({ hour: pac.hour, price: Number((parseFloat(v[1]) / 10).toFixed(2)) });
+  }
+  return out.sort((a, b) => a.hour - b.hour);
+}
+
+async function getCaisoXml(key, path, ttlMs) {
+  const c = caisoCache.get(key);
+  if (c && Date.now() - c.at < ttlMs) return c.xml;
+  const buf = await fetchBuffer(CAISO_HOST, path);
+  const xml = unzipSingle(buf).toString("utf8");
+  caisoCache.set(key, { at: Date.now(), xml });
+  return xml;
+}
+
+async function handleCaiso(req, res, url) {
+  const seg = url.pathname.replace(/^\/caiso\//, "");
+  const zone = (url.searchParams.get("zone") || "NP15").toUpperCase();
+  const node = CAISO_ZONES[zone] || CAISO_ZONES.NP15;
+  try {
+    let data;
+    if (seg === "rt") {
+      const now = new Date();
+      const start = new Date(now.getTime() - 24 * 3600_000);
+      const path = `/oasisapi/SingleZip?queryname=PRC_INTVL_LMP&version=3&market_run_id=RTM&node=${node}&startdatetime=${fmtGmt(start)}&enddatetime=${fmtGmt(now)}`;
+      data = parseRt(await getCaisoXml(`rt:${zone}`, path, 60_000));
+    } else if (seg === "dam") {
+      const ymd = (url.searchParams.get("date") || "").replace(/[^0-9]/g, "");
+      if (!/^\d{8}$/.test(ymd)) {
+        res.writeHead(400);
+        return res.end("bad date");
+      }
+      const startD = new Date(Date.UTC(+ymd.slice(0, 4), +ymd.slice(4, 6) - 1, +ymd.slice(6, 8), 6));
+      const endD = new Date(startD.getTime() + 27 * 3600_000);
+      const path = `/oasisapi/SingleZip?queryname=PRC_LMP&version=1&market_run_id=DAM&node=${node}&startdatetime=${fmtGmt(startD)}&enddatetime=${fmtGmt(endD)}`;
+      data = parseDam(await getCaisoXml(`dam:${zone}:${ymd}`, path, 1800_000), ymd);
+    } else {
+      res.writeHead(404);
+      return res.end("not found");
+    }
+    res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
+    res.end(JSON.stringify(data));
+  } catch {
+    res.writeHead(502, { "Content-Type": "application/json" });
+    res.end("[]");
+  }
+}
+
 const server = createServer(async (req, res) => {
   try {
     if (req.url.startsWith("/comed/") || req.url === "/comed") {
       return proxyComed(req, res);
+    }
+    if (req.url.startsWith("/caiso/")) {
+      return handleCaiso(req, res, new URL(req.url, "http://localhost"));
     }
 
     const url = new URL(req.url, "http://localhost");

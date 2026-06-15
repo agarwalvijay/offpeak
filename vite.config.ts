@@ -12,6 +12,12 @@ const comedProxy = {
     secure: true,
     rewrite: (p: string) => p.replace(/^\/comed/, ""),
   },
+  // CAISO goes through our own server's transform; in dev, proxy to production.
+  "/caiso": {
+    target: "https://offpeak.atsumilabs.com",
+    changeOrigin: true,
+    secure: true,
+  },
 };
 
 export default defineConfig({

@@ -10,6 +10,7 @@ import {
   TIME_PERIOD_META,
   todayActualHourly,
   usePricing,
+  UTILITIES,
 } from "@/lib";
 import { useSettings } from "./store";
 import { postAlertConfig, postPriceSnapshot } from "./native-bridge";
@@ -26,10 +27,13 @@ export function App() {
     dayAheadDay,
     theme,
     alertPrefs,
+    utility,
+    caisoZone,
     setTimePeriod,
     setDayAheadDay,
   } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
+  const utilityMeta = UTILITIES[utility];
 
   // Keep the native shell's background task in sync with alert config.
   useEffect(() => {
@@ -65,7 +69,12 @@ export function App() {
     error,
     lastUpdate,
     refetch,
-  } = usePricing({ autoRefresh, dayAheadDay });
+  } = usePricing({
+    utility,
+    zone: utility === "caiso" ? caisoZone : undefined,
+    autoRefresh,
+    dayAheadDay,
+  });
 
   const filtered = useMemo(
     () => filterByPeriod(fiveMinuteData, timePeriod),
@@ -80,8 +89,10 @@ export function App() {
   const meta = ALERT_LEVEL_META[level];
 
   // Share the current price with the home-screen widget so it mirrors the app.
+  // Gated to ComEd for now — the native widget/alert background still uses ComEd
+  // directly (CAISO support for those is a follow-up).
   useEffect(() => {
-    if (currentPrice == null) return;
+    if (currentPrice == null || utility !== "comed") return;
     postPriceSnapshot({
       price: formatPrice(currentPrice),
       level: meta.label,
@@ -92,7 +103,7 @@ export function App() {
         minute: "2-digit",
       }),
     });
-  }, [currentPrice, meta.label, meta.color, currentHourAverage, lastUpdate]);
+  }, [currentPrice, meta.label, meta.color, currentHourAverage, lastUpdate, utility]);
 
   const thresholds = [
     { value: alertSettings.low, color: "#16a34a" },
@@ -111,7 +122,7 @@ export function App() {
           </div>
           <div className="header__title">
             <b>OffPeak</b>
-            <span>ComEd real-time hourly pricing</span>
+            <span>{utilityMeta.subtitle(caisoZone)}</span>
           </div>
         </div>
         {lastUpdate && (
@@ -207,7 +218,7 @@ export function App() {
             <section className="card status-card">
               <div className="status-row">
                 <span>Data source</span>
-                <span>ComEd Hourly Pricing</span>
+                <span>{utilityMeta.source}</span>
               </div>
               <div className="status-row">
                 <span>Readings</span>

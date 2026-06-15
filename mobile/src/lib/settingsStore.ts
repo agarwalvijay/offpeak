@@ -13,6 +13,7 @@ import {
   type TimePeriod,
 } from "./pricing";
 import { DEFAULT_ALERT_PREFS, type AlertPrefs } from "./priceAlerts";
+import type { Utility } from "./provider";
 
 export type Theme = "system" | "light" | "dark";
 
@@ -23,12 +24,16 @@ export interface SettingsState {
   dayAheadDay: DayAheadDay;
   theme: Theme;
   alertPrefs: AlertPrefs;
+  utility: Utility;
+  caisoZone: string;
   setAlertSettings: (s: AlertSettings) => void;
   setAutoRefresh: (v: boolean) => void;
   setTimePeriod: (p: TimePeriod) => void;
   setDayAheadDay: (d: DayAheadDay) => void;
   setTheme: (t: Theme) => void;
   setAlertPrefs: (p: AlertPrefs) => void;
+  setUtility: (u: Utility) => void;
+  setCaisoZone: (z: string) => void;
 }
 
 export type SettingsStore = UseBoundStore<StoreApi<SettingsState>>;
@@ -43,12 +48,16 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
         dayAheadDay: "today",
         theme: "system",
         alertPrefs: DEFAULT_ALERT_PREFS,
+        utility: "comed",
+        caisoZone: "NP15",
         setAlertSettings: (alertSettings) => set({ alertSettings }),
         setAutoRefresh: (autoRefresh) => set({ autoRefresh }),
         setTimePeriod: (timePeriod) => set({ timePeriod }),
         setDayAheadDay: (dayAheadDay) => set({ dayAheadDay }),
         setTheme: (theme) => set({ theme }),
         setAlertPrefs: (alertPrefs) => set({ alertPrefs }),
+        setUtility: (utility) => set({ utility }),
+        setCaisoZone: (caisoZone) => set({ caisoZone }),
       }),
       {
         name: "offpeak-settings",
@@ -59,6 +68,8 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
           timePeriod: s.timePeriod,
           theme: s.theme,
           alertPrefs: s.alertPrefs,
+          utility: s.utility,
+          caisoZone: s.caisoZone,
         }),
       },
     ),

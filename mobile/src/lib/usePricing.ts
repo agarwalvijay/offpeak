@@ -1,19 +1,17 @@
-// Shared data-fetching hook (React Query). Mirrors PricingProvider.refreshData
-// in the Flutter app: the three feeds are fetched in parallel and auto-refresh
-// every 5 minutes when enabled. Settings live in a separate store; the caller
-// passes the values this hook needs so the lib stays platform-agnostic.
+// Shared data-fetching hook (React Query). Fetches the three feeds in parallel
+// for the selected utility and auto-refreshes every 5 minutes when enabled.
+// Settings live in a separate store; the caller passes what this hook needs so
+// the lib stays platform-agnostic.
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  getCurrentHourAverage,
-  getDayAheadPricing,
-  getFiveMinuteFeed,
-} from "./comedApi";
+import { pricingClient, type Utility } from "./provider";
 import type { DayAheadDay, HourlyPrice, PricingPoint } from "./pricing";
 
 const FIVE_MIN_MS = 5 * 60_000;
 
 export interface UsePricingOptions {
+  utility: Utility;
+  zone?: string;
   autoRefresh: boolean;
   dayAheadDay: DayAheadDay;
 }
@@ -31,25 +29,28 @@ export interface UsePricingResult {
 
 export function usePricing(opts: UsePricingOptions): UsePricingResult {
   const refetchInterval = opts.autoRefresh ? FIVE_MIN_MS : false;
+  const client = pricingClient(opts.utility, opts.zone);
+  // Include utility+zone in the keys so switching providers refetches cleanly.
+  const scope = [opts.utility, opts.zone ?? ""];
 
   const fiveMin = useQuery({
-    queryKey: ["fiveMinuteFeed"],
-    queryFn: getFiveMinuteFeed,
+    queryKey: ["fiveMinuteFeed", ...scope],
+    queryFn: client.getFiveMinuteFeed,
     refetchInterval,
   });
 
   const currentHour = useQuery({
-    queryKey: ["currentHourAverage"],
-    queryFn: getCurrentHourAverage,
+    queryKey: ["currentHourAverage", ...scope],
+    queryFn: client.getCurrentHourAverage,
     refetchInterval,
   });
 
   const dayAhead = useQuery({
-    queryKey: ["dayAhead", opts.dayAheadDay],
+    queryKey: ["dayAhead", opts.dayAheadDay, ...scope],
     queryFn: () => {
       const date = new Date();
       if (opts.dayAheadDay === "tomorrow") date.setDate(date.getDate() + 1);
-      return getDayAheadPricing(date);
+      return client.getDayAheadPricing(date);
     },
     refetchInterval,
   });
