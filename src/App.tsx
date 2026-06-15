@@ -17,6 +17,7 @@ import { postAlertConfig, postPriceSnapshot } from "./native-bridge";
 import { PriceChart } from "./components/PriceChart";
 import { DayAheadChart } from "./components/DayAheadChart";
 import { SettingsModal } from "./components/SettingsModal";
+import { Onboarding } from "./components/Onboarding";
 import { BoltIcon, RefreshIcon, SettingsIcon } from "./components/icons";
 
 export function App() {
@@ -29,6 +30,7 @@ export function App() {
     alertPrefs,
     utility,
     caisoZone,
+    onboarded,
     setTimePeriod,
     setDayAheadDay,
   } = useSettings();
@@ -298,6 +300,7 @@ export function App() {
       )}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {!onboarded && <Onboarding />}
     </div>
   );
 }

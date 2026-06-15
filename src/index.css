@@ -617,6 +617,105 @@ body {
   box-shadow: var(--shadow);
 }
 
+/* Onboarding (first run) */
+.onboard {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: auto;
+  background: radial-gradient(
+    1400px 700px at 50% -15%,
+    var(--app-grad) 0%,
+    var(--bg) 55%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.onboard__card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 24px;
+  box-shadow: var(--shadow);
+}
+.onboard__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.onboard__title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.onboard__tag {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.onboard__h {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+.onboard__sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0 0 18px;
+}
+.onboard__opts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onboard__opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+.onboard__opt.is-sel {
+  border-color: var(--accent);
+  background: rgba(37, 99, 235, 0.12);
+}
+.onboard__opt-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+.onboard__opt-region {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.onboard__zones {
+  margin-top: 16px;
+}
+.onboard__zlabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.onboard__cta {
+  width: 100%;
+  margin-top: 22px;
+  padding: 12px;
+  font-size: 15px;
+}
+
 /* Narrow / mobile: reflow the horizontal dashboard into a vertical stack. */
 @media (max-width: 860px) {
   html,

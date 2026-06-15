@@ -26,6 +26,7 @@ export interface SettingsState {
   alertPrefs: AlertPrefs;
   utility: Utility;
   caisoZone: string;
+  onboarded: boolean;
   setAlertSettings: (s: AlertSettings) => void;
   setAutoRefresh: (v: boolean) => void;
   setTimePeriod: (p: TimePeriod) => void;
@@ -34,6 +35,7 @@ export interface SettingsState {
   setAlertPrefs: (p: AlertPrefs) => void;
   setUtility: (u: Utility) => void;
   setCaisoZone: (z: string) => void;
+  setOnboarded: (v: boolean) => void;
 }
 
 export type SettingsStore = UseBoundStore<StoreApi<SettingsState>>;
@@ -50,6 +52,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
         alertPrefs: DEFAULT_ALERT_PREFS,
         utility: "comed",
         caisoZone: "NP15",
+        onboarded: false,
         setAlertSettings: (alertSettings) => set({ alertSettings }),
         setAutoRefresh: (autoRefresh) => set({ autoRefresh }),
         setTimePeriod: (timePeriod) => set({ timePeriod }),
@@ -58,6 +61,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
         setAlertPrefs: (alertPrefs) => set({ alertPrefs }),
         setUtility: (utility) => set({ utility }),
         setCaisoZone: (caisoZone) => set({ caisoZone }),
+        setOnboarded: (onboarded) => set({ onboarded }),
       }),
       {
         name: "offpeak-settings",
@@ -70,6 +74,7 @@ export function createSettingsStore(storage: StateStorage): SettingsStore {
           alertPrefs: s.alertPrefs,
           utility: s.utility,
           caisoZone: s.caisoZone,
+          onboarded: s.onboarded,
         }),
       },
     ),
