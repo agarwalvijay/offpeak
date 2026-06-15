@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { getEnabledUtilities, UTILITIES } from "@/lib";
+import { useEffect, useState } from "react";
+import {
+  fetchEnabledMarkets,
+  getEnabledUtilities,
+  setEnabledUtilities,
+  UTILITIES,
+  type Utility,
+} from "@/lib";
 import { useSettings } from "../store";
 import { requestNotifPermission } from "../native-bridge";
 import { CloseIcon } from "./icons";
@@ -33,6 +39,18 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   } = useSettings();
   const zones = UTILITIES[utility].zones;
   const currentZone = zoneByUtility[utility] ?? UTILITIES[utility].defaultZone;
+
+  // Re-pull the live market list when settings opens, so it reflects the
+  // current server config even in a long-running session (falls back to the
+  // list already in memory). Kept in local state so the change re-renders here.
+  const [markets, setMarkets] = useState<Utility[]>(getEnabledUtilities());
+  useEffect(() => {
+    fetchEnabledMarkets().then((ids) => {
+      if (!ids.length) return;
+      setEnabledUtilities(ids);
+      setMarkets(getEnabledUtilities());
+    });
+  }, []);
   const [vals, setVals] = useState({
     low: String(alertSettings.low),
     medium: String(alertSettings.medium),
@@ -84,7 +102,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             <div className="meta">Which grid's real-time prices to show</div>
           </div>
           <div className="segmented">
-            {getEnabledUtilities().map((u) => (
+            {markets.map((u) => (
               <button
                 key={u}
                 className={utility === u ? "is-on" : ""}

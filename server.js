@@ -835,6 +835,18 @@ async function handlePjm(req, res, url) {
 
 const server = createServer(async (req, res) => {
   try {
+    // Runtime client config: the live enabled-markets list (same allowlist the
+    // routes below enforce). The client fetches this at launch + when opening
+    // settings so an installed/cached app reflects the current config without
+    // waiting for a new bundle. Order = config order (first = launch default).
+    if (req.url === "/config" || req.url.startsWith("/config?")) {
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      return res.end(JSON.stringify({ markets: [...enabledMarkets] }));
+    }
+
     // Market data endpoints, each gated on the enabled-markets allowlist:
     // a disabled provider returns 404 (its UI is hidden, but enforce here too).
     const market = (req.url.match(/^\/(comed|caiso|ercot|nyiso|isone|pjm)(?:\/|$)/) || [])[1];

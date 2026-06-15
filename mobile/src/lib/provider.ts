@@ -199,6 +199,23 @@ export function isUtilityEnabled(u: Utility): boolean {
   return enabledUtilities.includes(u);
 }
 
+/** Fetch the server's live enabled-markets list (GET /config). Returns [] on
+ *  any failure (timeout, offline, bad payload) so callers keep their existing
+ *  list. Same-origin on web + the mobile WebView, so the default base works. */
+export async function fetchEnabledMarkets(base = ""): Promise<string[]> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 2500);
+    const res = await fetch(`${base}/config`, { signal: ctrl.signal, cache: "no-store" });
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const json = (await res.json()) as { markets?: unknown };
+    return Array.isArray(json.markets) ? json.markets.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 export interface PricingClient {
   getFiveMinuteFeed: () => Promise<PricingPoint[]>;
   getCurrentHourAverage: () => Promise<PricingPoint | null>;
