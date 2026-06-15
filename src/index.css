@@ -668,8 +668,8 @@ body {
   margin: 0 0 18px;
 }
 .onboard__opts {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 .onboard__opt {
@@ -714,6 +714,17 @@ body {
   margin-top: 22px;
   padding: 12px;
   font-size: 15px;
+}
+
+/* Laptop/desktop: a roomier card with the market list in two columns. Phones
+   keep the single-column layout above. The zone chips + CTA stay full width. */
+@media (min-width: 640px) {
+  .onboard__card {
+    max-width: 640px;
+  }
+  .onboard__opts {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* Narrow / mobile: reflow the horizontal dashboard into a vertical stack. */
