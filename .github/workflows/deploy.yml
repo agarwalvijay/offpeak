@@ -65,9 +65,31 @@ jobs:
             --exclude '/index.html' \
             --exclude '/tsconfig*' \
             --exclude '/vite.config.ts' \
+            --exclude '/.env' \
             --exclude '*.log' \
             -e "ssh -i ~/.ssh/id_deploy -p $PORT -o StrictHostKeyChecking=yes" \
             ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+
+      # Push provider secrets (ERCOT) into a server-side .env that server.js
+      # loads — kept out of git and the client bundle. Uses env mapping +
+      # printf %s so values can't break out of the shell.
+      - name: Write server env
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          ERCOT_USERNAME: ${{ secrets.ERCOT_USERNAME }}
+          ERCOT_PASSWORD: ${{ secrets.ERCOT_PASSWORD }}
+          ERCOT_SUBSCRIPTION_KEY: ${{ secrets.ERCOT_SUBSCRIPTION_KEY }}
+        run: |
+          umask 077
+          {
+            printf 'ERCOT_USERNAME=%s\n' "$ERCOT_USERNAME"
+            printf 'ERCOT_PASSWORD=%s\n' "$ERCOT_PASSWORD"
+            printf 'ERCOT_SUBSCRIPTION_KEY=%s\n' "$ERCOT_SUBSCRIPTION_KEY"
+          } > server.env
+          PORT="${{ secrets.SSH_PORT }}"; PORT="${PORT:-22}"
+          scp -i ~/.ssh/id_deploy -P "$PORT" -o StrictHostKeyChecking=yes \
+            server.env "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env"
+          rm -f server.env
 
       - name: Reload pm2
         if: steps.guard.outputs.ready == 'true'

@@ -5,6 +5,7 @@
 import { createServer } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { inflateRawSync } from "node:zlib";
+import { readFileSync } from "node:fs";
 import { stat, readFile } from "node:fs/promises";
 import { join, normalize, extname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,25 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const DIST = join(__dirname, "dist");
 const PORT = process.env.PORT || 8127;
 const COMED_HOST = "hourlypricing.comed.com";
+
+// Load DEPLOY_PATH/.env (KEY=VALUE) — server-side provider secrets (ERCOT),
+// written by the deploy, never committed.
+try {
+  for (const line of readFileSync(join(__dirname, ".env"), "utf8").split("\n")) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+  }
+} catch {
+  // no .env — fine in dev
+}
+
+// ERCOT public API: OAuth (ROPC) id_token + subscription key, both required.
+const ERCOT_TOKEN_URL =
+  "https://ercotb2c.b2clogin.com/ercotb2c.onmicrosoft.com/B2C_1_PUBAPI-ROPC-FLOW/oauth2/v2.0/token";
+const ERCOT_CLIENT_ID = "fec253ea-0d06-4272-a5e6-b478baeecd70";
+const ERCOT_API_BASE = "https://api.ercot.com/api/public-reports";
+let ercotToken = null; // { token, exp }
+const ercotCache = new Map();
 
 // CAISO OASIS: trading-hub nodes by short zone code, and a small in-memory
 // cache so we hit OASIS at most once per TTL per zone (it rate-limits hard).
@@ -217,6 +237,66 @@ async function handleCaiso(req, res, url) {
   }
 }
 
+// --- ERCOT public API → clean JSON --------------------------------------------
+
+/** Mint + cache the ERCOT id_token (ROPC; valid 1h, no refresh). */
+async function ercotIdToken() {
+  if (ercotToken && Date.now() < ercotToken.exp) return ercotToken.token;
+  const body = new URLSearchParams({
+    grant_type: "password",
+    username: process.env.ERCOT_USERNAME || "",
+    password: process.env.ERCOT_PASSWORD || "",
+    client_id: ERCOT_CLIENT_ID,
+    scope: `openid ${ERCOT_CLIENT_ID} offline_access`,
+    response_type: "id_token",
+  });
+  const res = await fetch(ERCOT_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`token ${res.status}: ${text.slice(0, 200)}`);
+  const token = JSON.parse(text).id_token;
+  if (!token) throw new Error("no id_token in response");
+  ercotToken = { token, exp: Date.now() + 55 * 60_000 };
+  return token;
+}
+
+/** GET an ERCOT public-report path (relative to ERCOT_API_BASE) → parsed JSON. */
+async function ercotGet(path) {
+  const token = await ercotIdToken();
+  const res = await fetch(`${ERCOT_API_BASE}/${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Ocp-Apim-Subscription-Key": process.env.ERCOT_SUBSCRIPTION_KEY || "",
+      Accept: "application/json",
+    },
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`api ${res.status}: ${text.slice(0, 300)}`);
+  return JSON.parse(text);
+}
+
+async function handleErcot(req, res, url) {
+  const seg = url.pathname.replace(/^\/ercot\//, "");
+  try {
+    // Discovery passthrough: /ercot/raw?path=<url-encoded report path + query>.
+    if (seg === "raw") {
+      const path = url.searchParams.get("path") ?? "";
+      const j = await ercotGet(path);
+      if (j && Array.isArray(j.data)) j.data = j.data.slice(0, 3); // truncate
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(j));
+    }
+    res.writeHead(404);
+    res.end("not found");
+  } catch (e) {
+    res.writeHead(502, { "Content-Type": "text/plain" });
+    res.end(String(e && e.message ? e.message : e).slice(0, 400));
+  }
+}
+
 const server = createServer(async (req, res) => {
   try {
     if (req.url.startsWith("/comed/") || req.url === "/comed") {
@@ -224,6 +304,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.url.startsWith("/caiso/")) {
       return handleCaiso(req, res, new URL(req.url, "http://localhost"));
+    }
+    if (req.url.startsWith("/ercot/")) {
+      return handleErcot(req, res, new URL(req.url, "http://localhost"));
     }
 
     const url = new URL(req.url, "http://localhost");
