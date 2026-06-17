@@ -1,10 +1,16 @@
 import { FlexWidget, TextWidget } from "react-native-android-widget";
 import type { WidgetPrice } from "./widgetData";
 
-// borderRadius 0 + full-bleed background: on Android 12+ the launcher applies
-// its OWN rounded mask. Setting our own radius fights that mask and produces bad
-// edges (worst at the bottom). Let the launcher round it.
-const GRADIENT = { from: "#16223c", to: "#0b1220", orientation: "TOP_BOTTOM" } as const;
+// Solid background (NOT a gradient): react-native-android-widget can't express
+// a gradient in RemoteViews, so it renders gradient/rounded views to a bitmap
+// sized from the OS-reported widget dimensions — which are intermittently stale
+// or report the min height on boot/periodic-update, producing the "half
+// rendered" widget (a manual refresh re-reads the real size and fixes it). A
+// flat backgroundColor is a native RemoteViews fill that always matches the
+// laid-out size, so it can't clip.
+// borderRadius 0 + full-bleed: on Android 12+ the launcher applies its OWN
+// rounded mask; setting our own radius fights it and produces bad edges.
+const BG = "#101d33";
 const FG = "#e8edf6";
 const DIM = "#93a0b8";
 
@@ -22,7 +28,7 @@ export function OffPeakWidget({ data }: { data: WidgetPrice | null }) {
       style={{
         height: "match_parent",
         width: "match_parent",
-        backgroundGradient: GRADIENT,
+        backgroundColor: BG,
         borderRadius: 0,
         paddingHorizontal: 16,
         paddingVertical: 8,
