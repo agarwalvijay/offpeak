@@ -3,15 +3,17 @@ import { getEnabledUtilities, UTILITIES, type Utility } from "@/lib";
 import { useSettings } from "../store";
 import { BoltIcon } from "./icons";
 
+// Region + example retail utilities, so people recognize their provider
+// (e.g. a PG&E customer should land on CAISO). Illustrative, not exhaustive.
 const REGION: Record<Utility, string> = {
-  comed: "Northern Illinois · Commonwealth Edison",
-  caiso: "California · CAISO grid",
-  ercot: "Texas · ERCOT grid",
-  nyiso: "New York · NYISO grid",
-  isone: "New England · ISO-NE grid",
-  pjm: "Mid-Atlantic / Midwest · PJM grid",
-  miso: "Midwest / South · MISO grid",
-  spp: "Central US · SPP grid",
+  comed: "Northern Illinois · Commonwealth Edison (ComEd)",
+  caiso: "California · PG&E, SCE, SDG&E",
+  ercot: "Texas · Oncor, CenterPoint, AEP Texas",
+  nyiso: "New York · Con Edison, National Grid, NYSEG",
+  isone: "New England · Eversource, National Grid, Avangrid",
+  pjm: "Mid-Atlantic / Midwest · PECO, PSE&G, BGE, Pepco, Dominion",
+  miso: "Midwest / South · Ameren, DTE, Entergy, Consumers",
+  spp: "Central US · Evergy, OG&E, Xcel (SPS)",
 };
 
 /** First-run screen: pick a utility before seeing the dashboard. */

@@ -101,9 +101,9 @@ export const UTILITIES: Record<Utility, UtilityMeta> = {
     subtitle: (zone) => `CAISO · ${zone ?? "NP15"} real-time pricing`,
     source: "CAISO OASIS (real-time LMP)",
     zones: [
-      { id: "NP15", label: "NP15 — North" },
-      { id: "SP15", label: "SP15 — South" },
-      { id: "ZP26", label: "ZP26 — Central" },
+      { id: "NP15", label: "North — PG&E" },
+      { id: "SP15", label: "South — SCE, SDG&E" },
+      { id: "ZP26", label: "Central" },
     ],
     defaultZone: "NP15",
   },
