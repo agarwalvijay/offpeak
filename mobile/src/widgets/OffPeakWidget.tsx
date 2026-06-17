@@ -10,7 +10,7 @@ import type { WidgetPrice } from "./widgetData";
 // laid-out size, so it can't clip.
 // borderRadius 0 + full-bleed: on Android 12+ the launcher applies its OWN
 // rounded mask; setting our own radius fights it and produces bad edges.
-const BG = "#1a2a47";
+const BG = "#2a4068";
 const FG = "#e8edf6";
 const DIM = "#93a0b8";
 
