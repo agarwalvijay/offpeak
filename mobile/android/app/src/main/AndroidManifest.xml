@@ -46,5 +46,12 @@
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_offpeakprice"/>
     </receiver>
+    <receiver android:name=".widget.OffPeakSquare" android:exported="false" android:label="OffPeak Price (square)">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+        <action android:name="com.atsumilabs.offpeak.WIDGET_CLICK"/>
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widgetprovider_offpeaksquare"/>
+    </receiver>
   </application>
 </manifest>

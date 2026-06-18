@@ -33,7 +33,7 @@ public abstract class BaseOffPeakWidget extends AppWidgetProvider {
     protected static final String ACTION_REFRESH = "com.atsumilabs.offpeak.WIDGET_CLICK";
 
     /** All provider classes — broadcast targets so JS/worker can repaint each. */
-    private static final Class<?>[] PROVIDERS = { OffPeakPrice.class };
+    private static final Class<?>[] PROVIDERS = { OffPeakPrice.class, OffPeakSquare.class };
 
     /** Layout to inflate for this widget shape. */
     protected abstract int layoutId();

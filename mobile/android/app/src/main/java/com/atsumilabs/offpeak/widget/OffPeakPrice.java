@@ -33,6 +33,12 @@ public class OffPeakPrice extends BaseOffPeakWidget {
         return R.layout.widget_offpeak;
     }
 
+    /** How many of the most-recent stored points to chart. Banner shows the
+     *  full sparkline; the square narrows to ~the last hour (see OffPeakSquare). */
+    protected int maxBars() {
+        return 64;
+    }
+
     @Override
     protected void bind(Context context, RemoteViews v, JSONObject d) {
         int color = parseColor(d.optString("color", ""), 0xFFFFD166);
@@ -53,7 +59,7 @@ public class OffPeakPrice extends BaseOffPeakWidget {
         v.setTextViewText(R.id.widget_avg, avg.isEmpty() ? "" : "avg " + avg);
         v.setTextViewText(R.id.widget_updated, optClean(d, "updated"));
 
-        Bitmap spark = drawTrend(d.optJSONArray("points"), color);
+        Bitmap spark = drawTrend(d.optJSONArray("points"), color, maxBars());
         if (spark != null) {
             v.setImageViewBitmap(R.id.widget_spark, spark);
             v.setViewVisibility(R.id.widget_spark, View.VISIBLE);
@@ -74,13 +80,15 @@ public class OffPeakPrice extends BaseOffPeakWidget {
 
     /** Bar sparkline of recent prices into a fixed-size bitmap. Bars fade in
      *  toward the newest; height is min→max normalized. null if too few points. */
-    private static Bitmap drawTrend(JSONArray points, int color) {
+    private static Bitmap drawTrend(JSONArray points, int color, int maxBars) {
         if (points == null || points.length() < 2) return null;
-        int n = points.length();
+        int start = Math.max(0, points.length() - maxBars);
+        int n = points.length() - start;
+        if (n < 2) return null;
         double min = Double.MAX_VALUE, max = -Double.MAX_VALUE;
         double[] vals = new double[n];
         for (int i = 0; i < n; i++) {
-            double val = points.optDouble(i, 0);
+            double val = points.optDouble(start + i, 0);
             vals[i] = val;
             if (val < min) min = val;
             if (val > max) max = val;

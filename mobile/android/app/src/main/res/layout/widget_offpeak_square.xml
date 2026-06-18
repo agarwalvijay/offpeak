@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="16dp">
+
+    <!-- Top row: utility + refresh -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="#F3F6FC"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:text="OffPeak" />
+
+        <TextView
+            android:id="@+id/widget_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="6dp"
+            android:textColor="#CFE0F5"
+            android:textStyle="bold"
+            android:textSize="20sp"
+            android:text="⟳" />
+    </LinearLayout>
+
+    <!-- Price + level + hour avg -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false"
+        android:gravity="bottom">
+
+        <TextView
+            android:id="@+id/widget_price"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFD166"
+            android:textStyle="bold"
+            android:textSize="40sp"
+            android:text="--¢" />
+
+        <TextView
+            android:id="@+id/widget_level"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:paddingBottom="6dp"
+            android:textColor="#FFD166"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:text="" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end|bottom"
+            android:paddingBottom="6dp"
+            android:textColor="#A8C0E0"
+            android:textSize="11sp"
+            android:text="Last hour" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_avg"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:textColor="#A8C0E0"
+        android:textSize="11sp"
+        android:text="" />
+
+    <!-- Last-hour trend bars -->
+    <ImageView
+        android:id="@+id/widget_spark"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp"
+        android:scaleType="fitXY"
+        android:adjustViewBounds="false"
+        android:contentDescription="Last-hour price trend" />
+
+    <TextView
+        android:id="@+id/widget_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="end"
+        android:textColor="#A8C0E0"
+        android:textSize="10sp"
+        android:text="" />
+</LinearLayout>
