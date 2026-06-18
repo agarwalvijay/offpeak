@@ -16,7 +16,7 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { refreshOffPeakWidget } from "./src/widgets/refreshWidgets";
 import { configureNotifications, requestNotificationPermission } from "./src/notifications";
 import { registerPriceAlertTask, storeAlertConfig } from "./src/tasks/priceAlertTask";
-import { storeWidgetSnapshot } from "./src/widgets/widgetData";
+import { storeAppSnapshot } from "./src/widgets/widgetData";
 
 // The mobile app presents the same full-screen OffPeak web dashboard. Loading
 // the deployed URL (not a local bundle) is intentional: the /comed CORS proxy
@@ -173,8 +173,9 @@ export default function App() {
         await requestNotificationPermission();
         await registerPriceAlertTask();
       } else if (msg.type === "priceSnapshot") {
-        await storeWidgetSnapshot(msg.snapshot);
-        refreshOffPeakWidget();
+        // Publishes the active row + caches the active utility for headless
+        // refreshes, then repaints the native widget.
+        await storeAppSnapshot(msg.snapshot);
       }
     } catch {
       // ignore malformed messages

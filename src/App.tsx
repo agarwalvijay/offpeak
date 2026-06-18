@@ -103,11 +103,13 @@ export function App() {
   const level = currentPrice == null ? "low" : getAlertLevel(currentPrice, alertSettings);
   const meta = ALERT_LEVEL_META[level];
 
-  // Share the current price with the home-screen widget so it mirrors the app.
-  // Gated to ComEd for now — the native widget/alert background still uses ComEd
-  // directly (CAISO support for those is a follow-up).
+  // Publish the current price to the home-screen widget for the SELECTED utility
+  // (all ISOs) so it mirrors the app and the native headless refresh knows what
+  // to re-fetch. The native side keys the store by utility+zone.
   useEffect(() => {
-    if (currentPrice == null || utility !== "comed") return;
+    if (currentPrice == null) return;
+    const zoneLabelText =
+      utilityMeta.zones?.find((z) => z.id === zone)?.label ?? "real-time";
     postPriceSnapshot({
       price: formatPrice(currentPrice),
       level: meta.label,
@@ -117,8 +119,12 @@ export function App() {
         hour: "numeric",
         minute: "2-digit",
       }),
+      utility,
+      zone,
+      title: utilityMeta.name,
+      sub: zoneLabelText,
     });
-  }, [currentPrice, meta.label, meta.color, currentHourAverage, lastUpdate, utility]);
+  }, [currentPrice, meta.label, meta.color, currentHourAverage, lastUpdate, utility, zone, utilityMeta]);
 
   const thresholds = [
     { value: alertSettings.low, color: "#16a34a" },

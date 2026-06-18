@@ -1,107 +1,131 @@
-// Data for the home-screen widget. Prefers a snapshot the app posted (so the
-// widget matches what the app last showed — no "app says 5¢, widget says 3¢"),
-// falls back to a live ComEd fetch, and finally to the last stored snapshot so
-// the widget never goes blank. Mirrors Skyfield's app-snapshot pattern.
+// Widget data plane. Fetches through the SAME shared provider abstraction the
+// app uses (pricingClient → all 8 ISOs), so there is zero per-utility code here
+// and no divergence. Publishes into the catalog (widgetStore) that the native
+// provider reads. Specific submodule imports (not the @/lib barrel) keep
+// react-query/zustand out of the headless bundle.
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-// Specific module imports (not the @/lib barrel) to keep react-query/zustand
-// out of the native bundle.
-import { getCurrentHourAverage, getFiveMinuteFeed } from "@/lib/comedApi";
+import { pricingClient, UTILITIES, type Utility } from "@/lib/provider";
 import { ALERT_LEVEL_META, DEFAULT_ALERT_SETTINGS, getAlertLevel } from "@/lib/pricing";
-import type { WidgetSnapshot } from "@/lib/widget";
+import { setComedBaseUrl } from "@/lib/comedApi";
+import { setCaisoBaseUrl } from "@/lib/caisoApi";
+import { setErcotBaseUrl } from "@/lib/ercotApi";
+import { setNyisoBaseUrl } from "@/lib/nyisoApi";
+import { setIsoneBaseUrl } from "@/lib/isoneApi";
+import { setPjmBaseUrl } from "@/lib/pjmApi";
+import { setMisoBaseUrl } from "@/lib/misoApi";
+import { setSppBaseUrl } from "@/lib/sppApi";
+import { putPlace, setBinding, freshForKey, type WidgetData } from "./widgetStore";
+import { requestWidgetRepaint } from "./widgetBridge";
 
-export type WidgetPrice = WidgetSnapshot;
-
-const SNAP_KEY = "offpeak.widgetSnapshot";
-// Prefer a recent snapshot (e.g. just posted by the app) over a fresh fetch so
-// the widget tracks the app; after this it fetches live again.
-const SNAP_FRESH_MS = 20 * 60 * 1000;
-
-interface StoredSnap {
-  data: WidgetSnapshot;
-  at: number;
+// In the WebView the clients are same-origin; the headless RN runtime has no
+// origin, so point every provider at our deployed server (which proxies ComEd
+// and serves the other ISOs). Idempotent.
+const SERVER = "https://offpeak.atsumilabs.com";
+let baseUrlsSet = false;
+export function ensureWidgetBaseUrls(): void {
+  if (baseUrlsSet) return;
+  baseUrlsSet = true;
+  setComedBaseUrl(`${SERVER}/comed`);
+  setCaisoBaseUrl(SERVER);
+  setErcotBaseUrl(SERVER);
+  setNyisoBaseUrl(SERVER);
+  setIsoneBaseUrl(SERVER);
+  setPjmBaseUrl(SERVER);
+  setMisoBaseUrl(SERVER);
+  setSppBaseUrl(SERVER);
 }
 
-/** Persist the latest snapshot (called by the app via the bridge, and after a
- *  successful live fetch). */
-export async function storeWidgetSnapshot(data: WidgetSnapshot): Promise<void> {
-  await AsyncStorage.setItem(SNAP_KEY, JSON.stringify({ data, at: Date.now() }));
+const ACTIVE_KEY = "offpeak.widgetActive"; // { utility, zone } the app last showed
+const FRESH_TTL_MS = 20 * 60 * 1000;
+
+interface ActiveSel {
+  utility: Utility;
+  zone?: string;
 }
 
-async function readSnap(): Promise<StoredSnap | null> {
+/** Snapshot the app posts over the WebView bridge (pre-rendered + routing). */
+export interface AppWidgetSnapshot extends WidgetData {
+  utility: Utility;
+  zone?: string;
+}
+
+function widgetKey(utility: string, zone?: string): string {
+  return zone ? `${utility}:${zone}` : utility;
+}
+
+function zoneLabel(utility: Utility, zone?: string): string {
+  if (!zone) return "real-time";
+  return UTILITIES[utility]?.zones?.find((z) => z.id === zone)?.label ?? "real-time";
+}
+
+/** The utility+zone a widget should display. For now every widget follows the
+ *  app's active selection (cached when the app publishes a snapshot). */
+async function resolveSelection(): Promise<ActiveSel> {
   try {
-    const raw = await AsyncStorage.getItem(SNAP_KEY);
-    if (raw) return JSON.parse(raw) as StoredSnap;
+    const raw = await AsyncStorage.getItem(ACTIVE_KEY);
+    const s = raw ? JSON.parse(raw) : null;
+    if (s?.utility && UTILITIES[s.utility as Utility]) {
+      return { utility: s.utility, zone: s.zone };
+    }
   } catch {
-    // ignore
+    // fall through
   }
-  return null;
+  return { utility: "comed" };
 }
 
-/** The last snapshot the app stored, IGNORING freshness — so the widget can
- *  paint something immediately instead of going blank while the headless fetch
- *  runs (or hangs). */
-export async function readLastSnapshot(): Promise<WidgetSnapshot | null> {
-  return (await readSnap())?.data ?? null;
-}
-
-/** Reject after `ms` so a hung headless network call can't block renderWidget. */
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    p,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
-  ]);
-}
-
-async function liveFetch(): Promise<WidgetSnapshot | null> {
-  const feed = await getFiveMinuteFeed();
-  if (feed.length === 0) return null;
-  const latest = feed[feed.length - 1];
-  const level = getAlertLevel(latest.price, DEFAULT_ALERT_SETTINGS);
+function build(utility: Utility, zone: string | undefined, price: number, hourAvg: string): WidgetData {
+  const level = getAlertLevel(price, DEFAULT_ALERT_SETTINGS);
   const meta = ALERT_LEVEL_META[level];
+  return {
+    price: `${price.toFixed(2)}¢`,
+    level: meta.label,
+    color: meta.color,
+    hourAvg,
+    updated: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+    title: UTILITIES[utility]?.name ?? "OffPeak",
+    sub: zoneLabel(utility, zone),
+  };
+}
+
+/** Headless fetch via the shared provider, published into the store. force=true
+ *  (explicit ⟳) skips the cached row. Records the widget's binding so the
+ *  native render half can find its row. */
+export async function fetchWidgetPrice(widgetId: number, force = false): Promise<WidgetData | null> {
+  ensureWidgetBaseUrls();
+  const { utility, zone } = await resolveSelection();
+  const key = widgetKey(utility, zone);
+  await setBinding(widgetId, "active").catch(() => {});
+
+  if (!force) {
+    const cached = await freshForKey(key, FRESH_TTL_MS);
+    if (cached) return cached;
+  }
+
+  const client = pricingClient(utility, zone);
+  const feed = await client.getFiveMinuteFeed();
+  if (!feed.length) return null;
+  const latest = feed[feed.length - 1];
 
   let hourAvg = "—";
   try {
-    const ch = await getCurrentHourAverage();
+    const ch = await client.getCurrentHourAverage();
     if (ch) hourAvg = `${ch.price.toFixed(2)}¢`;
   } catch {
     // best-effort
   }
 
-  return {
-    price: `${latest.price.toFixed(2)}¢`,
-    level: meta.label,
-    color: meta.color,
-    hourAvg,
-    updated: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-  };
+  const data = build(utility, zone, latest.price, hourAvg);
+  await putPlace(key, data, Date.now(), true).catch(() => {});
+  return data;
 }
 
-/**
- * What the widget should display.
- * - `preferSnapshot` (periodic/added): use a recent app snapshot if present, so
- *   the widget mirrors the app; otherwise fetch live.
- * - manual refresh passes `false` to force a live fetch.
- * The live fetch runs under a hard timeout so it can't hang the headless task;
- * on any failure/timeout it returns the last stored snapshot (even if stale)
- * rather than going blank.
- */
-export async function fetchWidgetPrice(
-  preferSnapshot = true,
-  timeoutMs = 12000,
-): Promise<WidgetSnapshot | null> {
-  const snap = await readSnap();
-  if (preferSnapshot && snap && Date.now() - snap.at < SNAP_FRESH_MS) {
-    return snap.data;
-  }
-  try {
-    const live = await withTimeout(liveFetch(), timeoutMs);
-    if (live) {
-      await storeWidgetSnapshot(live);
-      return live;
-    }
-  } catch {
-    // timeout or error — fall through to stale snapshot
-  }
-  return snap?.data ?? null;
+/** App-open path: the app already rendered the price, so publish it directly
+ *  (no fetch) and remember the active utility+zone for headless refreshes. */
+export async function storeAppSnapshot(snap: AppWidgetSnapshot): Promise<void> {
+  const { utility, zone, ...data } = snap;
+  const key = widgetKey(utility, zone);
+  await AsyncStorage.setItem(ACTIVE_KEY, JSON.stringify({ utility, zone })).catch(() => {});
+  await putPlace(key, data, Date.now(), true).catch(() => {});
+  requestWidgetRepaint();
 }

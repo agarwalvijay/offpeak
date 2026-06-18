@@ -1,24 +1,13 @@
-import React from "react";
 import { Platform } from "react-native";
-import { requestWidgetUpdate } from "react-native-android-widget";
-import { fetchWidgetPrice, readLastSnapshot } from "./widgetData";
-import { OffPeakWidget } from "./OffPeakWidget";
+import { syncWidgets } from "./widgetSync";
 
 /**
- * Re-fetch and re-render any placed OffPeak widget. Called when the app goes to
- * the background (Android's updatePeriodMillis alone is unreliable). Uses a
- * timed fetch + last-snapshot fallback so it can never hang or render blank.
+ * Refresh every widget: fetch fresh data for the active selection into the store
+ * (newest-wins) and repaint. The native providers re-read their row on the
+ * APPWIDGET_UPDATE broadcast. Called when the app backgrounds and by the
+ * background price-alert task.
  */
 export async function refreshOffPeakWidget(): Promise<void> {
   if (Platform.OS !== "android") return;
-  await requestWidgetUpdate({
-    widgetName: "OffPeakPrice",
-    renderWidget: async () => {
-      const data =
-        (await fetchWidgetPrice(true, 12000).catch(() => null)) ??
-        (await readLastSnapshot().catch(() => null));
-      return React.createElement(OffPeakWidget, { data });
-    },
-    widgetNotFound: () => {},
-  }).catch(() => {});
+  await syncWidgets(undefined, true).catch(() => {});
 }

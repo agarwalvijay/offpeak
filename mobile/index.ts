@@ -1,14 +1,12 @@
 import { registerRootComponent } from "expo";
-import { Platform } from "react-native";
-import { registerWidgetTaskHandler } from "react-native-android-widget";
 import App from "./App";
-import { widgetTaskHandler } from "./src/widgets/widgetTaskHandler";
 // Imported for side effect: defines the background price-alert task at module
 // scope so it exists in headless contexts too.
 import "./src/tasks/priceAlertTask";
+// Headless fetch task the native widget's ⟳ WorkManager worker runs (the app
+// may be closed). Must be registered at module load so it's available headless.
+import { registerWidgetSyncTask } from "./src/widgets/widgetSync";
 
-if (Platform.OS === "android") {
-  registerWidgetTaskHandler(widgetTaskHandler);
-}
+registerWidgetSyncTask();
 
 registerRootComponent(App);
