@@ -38,6 +38,21 @@ async function readSnap(): Promise<StoredSnap | null> {
   return null;
 }
 
+/** The last snapshot the app stored, IGNORING freshness — so the widget can
+ *  paint something immediately instead of going blank while the headless fetch
+ *  runs (or hangs). */
+export async function readLastSnapshot(): Promise<WidgetSnapshot | null> {
+  return (await readSnap())?.data ?? null;
+}
+
+/** Reject after `ms` so a hung headless network call can't block renderWidget. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+  ]);
+}
+
 async function liveFetch(): Promise<WidgetSnapshot | null> {
   const feed = await getFiveMinuteFeed();
   if (feed.length === 0) return null;
@@ -67,22 +82,26 @@ async function liveFetch(): Promise<WidgetSnapshot | null> {
  * - `preferSnapshot` (periodic/added): use a recent app snapshot if present, so
  *   the widget mirrors the app; otherwise fetch live.
  * - manual refresh passes `false` to force a live fetch.
- * On any failure, returns the last stored snapshot (even if stale) rather than
- * going blank.
+ * The live fetch runs under a hard timeout so it can't hang the headless task;
+ * on any failure/timeout it returns the last stored snapshot (even if stale)
+ * rather than going blank.
  */
-export async function fetchWidgetPrice(preferSnapshot = true): Promise<WidgetSnapshot | null> {
+export async function fetchWidgetPrice(
+  preferSnapshot = true,
+  timeoutMs = 12000,
+): Promise<WidgetSnapshot | null> {
   const snap = await readSnap();
   if (preferSnapshot && snap && Date.now() - snap.at < SNAP_FRESH_MS) {
     return snap.data;
   }
   try {
-    const live = await liveFetch();
+    const live = await withTimeout(liveFetch(), timeoutMs);
     if (live) {
       await storeWidgetSnapshot(live);
       return live;
     }
   } catch {
-    // fall through to stale snapshot
+    // timeout or error — fall through to stale snapshot
   }
   return snap?.data ?? null;
 }
