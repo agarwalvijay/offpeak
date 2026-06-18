@@ -32,6 +32,7 @@ export interface WidgetData {
   updated: string; // "6:32 PM"
   title: string; // utility name, e.g. "ComEd" / "CAISO"
   sub: string; // zone label / "real-time"
+  points?: number[]; // recent 5-min prices (¢) for the banner trend bars
 }
 
 interface PlaceRecord {

@@ -33,12 +33,13 @@
             android:text="" />
     </LinearLayout>
 
-    <!-- Middle: utility + zone -->
+    <!-- Middle: utility + last-hour trend bars -->
     <LinearLayout
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_weight="1"
         android:layout_marginStart="14dp"
+        android:gravity="center_vertical"
         android:orientation="vertical">
 
         <TextView
@@ -49,25 +50,25 @@
             android:ellipsize="end"
             android:textColor="#F3F6FC"
             android:textStyle="bold"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:text="OffPeak" />
 
-        <TextView
-            android:id="@+id/widget_sub"
+        <ImageView
+            android:id="@+id/widget_spark"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingTop="2dp"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:textColor="#CFE0F5"
-            android:textSize="12sp"
-            android:text="" />
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="4dp"
+            android:scaleType="fitXY"
+            android:adjustViewBounds="false"
+            android:contentDescription="Recent price trend" />
     </LinearLayout>
 
     <!-- Right: avg / updated + refresh -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
         android:gravity="end"
         android:orientation="vertical">
 
@@ -82,7 +83,7 @@
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingTop="2dp"
+            android:paddingTop="3dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -99,10 +100,10 @@
                 android:id="@+id/widget_refresh"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="4dp"
+                android:padding="6dp"
                 android:textColor="#CFE0F5"
                 android:textStyle="bold"
-                android:textSize="16sp"
+                android:textSize="20sp"
                 android:text="⟳" />
         </LinearLayout>
     </LinearLayout>

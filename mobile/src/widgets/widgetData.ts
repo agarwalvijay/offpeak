@@ -74,7 +74,16 @@ async function resolveSelection(): Promise<ActiveSel> {
   return { utility: "comed" };
 }
 
-function build(utility: Utility, zone: string | undefined, price: number, hourAvg: string): WidgetData {
+// How many recent 5-min points the banner trend bars show.
+const TREND_POINTS = 24;
+
+function build(
+  utility: Utility,
+  zone: string | undefined,
+  price: number,
+  hourAvg: string,
+  points: number[],
+): WidgetData {
   const level = getAlertLevel(price, DEFAULT_ALERT_SETTINGS);
   const meta = ALERT_LEVEL_META[level];
   return {
@@ -85,6 +94,7 @@ function build(utility: Utility, zone: string | undefined, price: number, hourAv
     updated: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
     title: UTILITIES[utility]?.name ?? "OffPeak",
     sub: zoneLabel(utility, zone),
+    points: points.slice(-TREND_POINTS),
   };
 }
 
@@ -115,7 +125,8 @@ export async function fetchWidgetPrice(widgetId: number, force = false): Promise
     // best-effort
   }
 
-  const data = build(utility, zone, latest.price, hourAvg);
+  const points = feed.map((p) => p.price);
+  const data = build(utility, zone, latest.price, hourAvg, points);
   await putPlace(key, data, Date.now(), true).catch(() => {});
   return data;
 }

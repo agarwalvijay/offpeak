@@ -15,4 +15,5 @@ export interface WidgetSnapshot {
   zone?: string; // zone id, if the utility has zones
   title: string; // utility name, e.g. "ComEd" / "CAISO"
   sub: string; // zone label / "real-time"
+  points?: number[]; // recent 5-min prices (¢) for the banner trend bars
 }

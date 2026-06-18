@@ -123,8 +123,9 @@ export function App() {
       zone,
       title: utilityMeta.name,
       sub: zoneLabelText,
+      points: fiveMinuteData.slice(-24).map((d) => d.price),
     });
-  }, [currentPrice, meta.label, meta.color, currentHourAverage, lastUpdate, utility, zone, utilityMeta]);
+  }, [currentPrice, meta.label, meta.color, currentHourAverage, lastUpdate, utility, zone, utilityMeta, fiveMinuteData]);
 
   const thresholds = [
     { value: alertSettings.low, color: "#16a34a" },
