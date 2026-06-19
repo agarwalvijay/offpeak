@@ -21,6 +21,11 @@
           "fetch",
           "processing"
         ]
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.atsumilabs.offpeak"
+        ]
       }
     },
     "android": {
@@ -36,6 +41,7 @@
       ]
     },
     "plugins": [
+      "@bacons/apple-targets",
       [
         "expo-notifications",
         {

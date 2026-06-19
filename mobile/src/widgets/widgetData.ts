@@ -17,6 +17,7 @@ import { setMisoBaseUrl } from "@/lib/misoApi";
 import { setSppBaseUrl } from "@/lib/sppApi";
 import { putPlace, setBinding, freshForKey, type WidgetData } from "./widgetStore";
 import { requestWidgetRepaint } from "./widgetBridge";
+import { writeIosWidget } from "./iosWidget";
 
 // In the WebView the clients are same-origin; the headless RN runtime has no
 // origin, so point every provider at our deployed server (which proxies ComEd
@@ -128,6 +129,7 @@ export async function fetchWidgetPrice(widgetId: number, force = false): Promise
   const points = feed.map((p) => p.price);
   const data = build(utility, zone, latest.price, hourAvg, points);
   await putPlace(key, data, Date.now(), true).catch(() => {});
+  await writeIosWidget(data).catch(() => {}); // iOS App Group
   return data;
 }
 
@@ -138,5 +140,6 @@ export async function storeAppSnapshot(snap: AppWidgetSnapshot): Promise<void> {
   const key = widgetKey(utility, zone);
   await AsyncStorage.setItem(ACTIVE_KEY, JSON.stringify({ utility, zone })).catch(() => {});
   await putPlace(key, data, Date.now(), true).catch(() => {});
+  await writeIosWidget(data).catch(() => {}); // iOS App Group
   requestWidgetRepaint();
 }
