@@ -129,7 +129,7 @@ export async function fetchWidgetPrice(widgetId: number, force = false): Promise
   const points = feed.map((p) => p.price);
   const data = build(utility, zone, latest.price, hourAvg, points);
   await putPlace(key, data, Date.now(), true).catch(() => {});
-  await writeIosWidget(data).catch(() => {}); // iOS App Group
+  await writeIosWidget(data, utility, zone).catch(() => {}); // iOS App Group
   return data;
 }
 
@@ -140,6 +140,6 @@ export async function storeAppSnapshot(snap: AppWidgetSnapshot): Promise<void> {
   const key = widgetKey(utility, zone);
   await AsyncStorage.setItem(ACTIVE_KEY, JSON.stringify({ utility, zone })).catch(() => {});
   await putPlace(key, data, Date.now(), true).catch(() => {});
-  await writeIosWidget(data).catch(() => {}); // iOS App Group
+  await writeIosWidget(data, utility, zone).catch(() => {}); // iOS App Group
   requestWidgetRepaint();
 }
