@@ -22,6 +22,10 @@ mobile/android/.cxx/
 mobile/android/local.properties
 mobile/ios/
 
+# Play upload signing secrets — NEVER commit (back these up separately).
+*.jks
+mobile/android/keystore.properties
+
 # Logs
 *.log
 npm-debug.log*
