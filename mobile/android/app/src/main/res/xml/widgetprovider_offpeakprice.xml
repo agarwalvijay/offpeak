@@ -6,6 +6,7 @@
     android:targetCellHeight="1"
     android:resizeMode="horizontal|vertical"
     android:description="@string/widget_offpeakprice_description"
+    android:previewImage="@drawable/widget_preview_banner"
     android:initialLayout="@layout/widget_offpeak"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen">
